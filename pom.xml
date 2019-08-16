@@ -50,6 +50,9 @@
     <module>spring-cloud-openfeign-core</module>
     <module>spring-cloud-openfeign-dependencies</module>
     <module>spring-cloud-starter-openfeign</module>
+
+    <module>feign-form</module>
+    <module>feign-form-spring</module>
   </modules>
 
   <properties>
