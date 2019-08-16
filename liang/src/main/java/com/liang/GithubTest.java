@@ -2,9 +2,15 @@ package com.liang;
 
 import example.github.GitHubExample;
 import feign.Feign;
+import feign.Logger;
 import feign.Param;
 import feign.RequestLine;
 import feign.gson.GsonDecoder;
+import feign.gson.GsonEncoder;
+import feign.okhttp.OkHttpClient;
+import feign.ribbon.RibbonClient;
+import feign.slf4j.Slf4jLogger;
+import sun.net.www.http.HttpClient;
 
 import java.util.List;
 
@@ -34,7 +40,12 @@ public class GithubTest {
 
     public static void main(String... args) {
         GitHub github = Feign.builder()
+                .encoder(new GsonEncoder())
                 .decoder(new GsonDecoder())
+                .logger(new Slf4jLogger())
+                .logLevel(Logger.Level.FULL)
+                .client(new OkHttpClient())
+                //.client(RibbonClient.create())
                 .target(GitHub.class, "https://api.github.com");
 
         // Fetch and print a list of the contributors to this library.
