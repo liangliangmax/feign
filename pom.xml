@@ -47,6 +47,9 @@
     <module>java8</module>
     <module>mock</module>
     <module>benchmark</module>
+    <module>spring-cloud-openfeign-core</module>
+    <module>spring-cloud-openfeign-dependencies</module>
+    <module>spring-cloud-starter-openfeign</module>
   </modules>
 
   <properties>
