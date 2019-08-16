@@ -53,6 +53,7 @@
 
     <module>feign-form</module>
     <module>feign-form-spring</module>
+    <module>liang</module>
   </modules>
 
   <properties>
