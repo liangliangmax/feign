@@ -72,11 +72,14 @@ final class SynchronousMethodHandler implements MethodHandler {
 
   @Override
   public Object invoke(Object[] argv) throws Throwable {
+    //1. 接口方法执行都会调用其对应的invoke方法
     RequestTemplate template = buildTemplateFromArgs.create(argv);
     Options options = findOptions(argv);
+    //重试组件
     Retryer retryer = this.retryer.clone();
     while (true) {
       try {
+        //执行请求并解码
         return executeAndDecode(template, options);
       } catch (RetryableException e) {
         try {
@@ -97,7 +100,9 @@ final class SynchronousMethodHandler implements MethodHandler {
     }
   }
 
+  //2 构建request请求并执行和解码
   Object executeAndDecode(RequestTemplate template, Options options) throws Throwable {
+    //1. 获取request请求
     Request request = targetRequest(template);
 
     if (logLevel != Logger.Level.NONE) {
@@ -107,6 +112,7 @@ final class SynchronousMethodHandler implements MethodHandler {
     Response response;
     long start = System.nanoTime();
     try {
+      //通过http组件发送请求
       response = client.execute(request, options);
     } catch (IOException e) {
       if (logLevel != Logger.Level.NONE) {
@@ -129,6 +135,9 @@ final class SynchronousMethodHandler implements MethodHandler {
         if (response.body().length() == null ||
             response.body().length() > MAX_RESPONSE_BUFFER_SIZE) {
           shouldClose = false;
+
+          //解码操作调用解码组件进行解码
+          //这里省略
           return response;
         }
         // Ensure the response body is disconnected
@@ -166,10 +175,14 @@ final class SynchronousMethodHandler implements MethodHandler {
     return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
   }
 
+  //3组装request请求，这里同时完成了拦截器调用的逻辑
   Request targetRequest(RequestTemplate template) {
+    //获取当前请求的所有拦截器
     for (RequestInterceptor interceptor : requestInterceptors) {
+      //依次调用拦截器进行拦截操作
       interceptor.apply(template);
     }
+    //返回Request对象
     return target.apply(template);
   }
 

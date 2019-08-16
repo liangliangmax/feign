@@ -74,7 +74,7 @@ public class GitHubExample {
     static GitHub connect() {
       Decoder decoder = new GsonDecoder();
       Encoder encoder = new GsonEncoder();
-      return Feign.builder()
+      return Feign.builder() //1.创建Builder实例对象
           .encoder(encoder)
           .decoder(decoder)
           .errorDecoder(new GitHubErrorDecoder(decoder))
@@ -106,17 +106,18 @@ public class GitHubExample {
     GitHub github = GitHub.connect();
 
     System.out.println("Let's fetch and print a list of the contributors to this org.");
+    // 获取贡献者列表，并打印其登录名以及贡献次数
     List<String> contributors = github.contributors("openfeign");
     for (String contributor : contributors) {
       System.out.println(contributor);
     }
 
-    System.out.println("Now, let's cause an error.");
-    try {
-      github.contributors("openfeign", "some-unknown-project");
-    } catch (GitHubClientError e) {
-      System.out.println(e.getMessage());
-    }
+//    System.out.println("Now, let's cause an error.");
+//    try {
+//      github.contributors("openfeign", "some-unknown-project");
+//    } catch (GitHubClientError e) {
+//      System.out.println(e.getMessage());
+//    }
 
     System.out.println("Now, try to create an issue - which will also cause an error.");
     try {

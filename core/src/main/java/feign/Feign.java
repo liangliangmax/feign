@@ -35,6 +35,7 @@ import static feign.ExceptionPropagationPolicy.NONE;
 public abstract class Feign {
 
   public static Builder builder() {
+    //调用创建Builder构建函数
     return new Builder();
   }
 
@@ -92,6 +93,7 @@ public abstract class Feign {
    */
   public abstract <T> T newInstance(Target<T> target);
 
+  //2.Builder构建函数，初始化组件信息，当然我们也可以自定义组件
   public static class Builder {
 
     private final List<RequestInterceptor> requestInterceptors =
@@ -243,21 +245,27 @@ public abstract class Feign {
       return this;
     }
 
+    //1. 调用target传入目标接口以及请求URL
     public <T> T target(Class<T> apiType, String url) {
       return target(new HardCodedTarget<T>(apiType, url));
     }
 
+    //2.根据Target包装对象创建目标接口的实例对象
     public <T> T target(Target<T> target) {
+      //通过3构建一个Feign对象，然后通过newInstance方法获取目标实例对象
       return build().newInstance(target);
     }
 
+    // 3. 构建Feign对象
     public Feign build() {
+      //创建方法代理类工厂
       SynchronousMethodHandler.Factory synchronousMethodHandlerFactory =
           new SynchronousMethodHandler.Factory(client, retryer, requestInterceptors, logger,
               logLevel, decode404, closeAfterDecode, propagationPolicy);
       ParseHandlersByName handlersByName =
           new ParseHandlersByName(contract, options, encoder, decoder, queryMapEncoder,
               errorDecoder, synchronousMethodHandlerFactory);
+      //这里返回真实的Feign对象
       return new ReflectiveFeign(handlersByName, invocationHandlerFactory, queryMapEncoder);
     }
   }

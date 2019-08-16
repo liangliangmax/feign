@@ -48,6 +48,9 @@ public class ReflectiveFeign extends Feign {
    */
   @SuppressWarnings("unchecked")
   @Override
+  //1. 这里是创建目录接口实例对象的真正地方
+  // 这里可以看到是使用了jdk自带的动态代理实现
+  //可以很清楚的看到返回的是目标接口的代理对象
   public <T> T newInstance(Target<T> target) {
     Map<String, MethodHandler> nameToHandler = targetToHandlersByName.apply(target);
     Map<Method, MethodHandler> methodToHandler = new LinkedHashMap<Method, MethodHandler>();
@@ -65,6 +68,8 @@ public class ReflectiveFeign extends Feign {
       }
     }
     InvocationHandler handler = factory.create(target, methodToHandler);
+    //这里可以看到是使用了jdk自带的动态代理实现的
+    //那么我们知道jdk动态代理真正执行的是InvocationHandler接口中的invoke方法，我们再跟踪invoke，看下执行目标接口方法时具体逻辑。
     T proxy = (T) Proxy.newProxyInstance(target.type().getClassLoader(),
         new Class<?>[] {target.type()}, handler);
 
@@ -84,8 +89,11 @@ public class ReflectiveFeign extends Feign {
       this.dispatch = checkNotNull(dispatch, "dispatch for %s", target);
     }
 
+    //2. 执行目标接口方法带来具体实现（FeignInvocationHandler）
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      //在此我们可以看出目标函数除了equals，hashCode，toString方法外都会调用this.dispatch.get(method)).invoke(args)
+      //dispatch是目标函数代理类集合，目标接口中每个函数都会对应有一个MethodHandler类，至于怎么得到的有兴趣可以查看源码
       if ("equals".equals(method.getName())) {
         try {
           Object otherHandler =
