@@ -7,6 +7,8 @@ import feign.Param;
 import feign.RequestLine;
 import feign.gson.GsonDecoder;
 import feign.gson.GsonEncoder;
+import feign.jackson.JacksonDecoder;
+import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.ribbon.RibbonClient;
 import feign.slf4j.Slf4jLogger;
@@ -41,10 +43,13 @@ public class GithubTest {
     public static void main(String... args) {
         GitHub github = Feign.builder()
                 .encoder(new GsonEncoder())
+                //.encoder(new JacksonEncoder())
                 .decoder(new GsonDecoder())
+                //.decoder(new JacksonDecoder())
                 .logger(new Slf4jLogger())
                 .logLevel(Logger.Level.FULL)
                 .client(new OkHttpClient())
+                //.client(new HttpClient())
                 //.client(RibbonClient.create())
                 .target(GitHub.class, "https://api.github.com");
 
