@@ -1,44 +1,15 @@
-package com.liang;
+package com.liang.feign;
 
-import example.github.GitHubExample;
 import feign.Feign;
 import feign.Logger;
-import feign.Param;
-import feign.RequestLine;
 import feign.gson.GsonDecoder;
 import feign.gson.GsonEncoder;
-import feign.jackson.JacksonDecoder;
-import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
-import feign.ribbon.RibbonClient;
 import feign.slf4j.Slf4jLogger;
-import sun.net.www.http.HttpClient;
 
 import java.util.List;
 
 public class GithubTest {
-
-    interface GitHub {
-        @RequestLine("GET /repos/{owner}/{repo}/contributors")
-        List<Contributor> contributors(@Param("owner") String owner, @Param("repo") String repo);
-
-        @RequestLine("POST /repos/{owner}/{repo}/issues")
-        void createIssue(Issue issue, @Param("owner") String owner, @Param("repo") String repo);
-
-    }
-
-    public static class Contributor {
-        String login;
-        int contributions;
-    }
-
-    public static class Issue {
-        String title;
-        String body;
-        List<String> assignees;
-        int milestone;
-        List<String> labels;
-    }
 
     public static void main(String... args) {
         GitHub github = Feign.builder()
