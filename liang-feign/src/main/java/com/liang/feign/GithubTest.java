@@ -6,7 +6,6 @@ import feign.gson.GsonDecoder;
 import feign.gson.GsonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
-import sun.net.www.http.HttpClient;
 
 import java.util.List;
 
