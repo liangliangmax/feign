@@ -1,2 +1,383 @@
 GithubTest.main
-    -->
+        //builder()会默认初始化很多组件，如果自定义了就用自定义的，如果没有自定义的就用默认的
+    --> GitHub github = Feign.builder()
+                       .encoder(new GsonEncoder())
+                       //.encoder(new JacksonEncoder())
+                       .decoder(new GsonDecoder())
+                       //.decoder(new JacksonDecoder())
+                       .logger(new Slf4jLogger())
+                       .logLevel(Logger.Level.FULL)
+                       //.client(new OkHttpClient())
+                       //.client(RibbonClient.create())
+                       .target(GitHub.class, "https://api.github.com");
+
+        --> feign.Feign.builder()
+                //调用创建Builder构建函数
+            --> return new Builder();
+                --> private final List<RequestInterceptor> requestInterceptors = new ArrayList<RequestInterceptor>();
+                    private Logger.Level logLevel = Logger.Level.NONE;
+                    private Contract contract = new Contract.Default(); //处理注解的类
+                        --> feign.Contract.Default()
+
+                    private Client client = new Client.Default(null, null);
+                        --> feign.Client.Default.Default(null, null)
+                            --> this.sslContextFactory = sslContextFactory;
+                                this.hostnameVerifier = hostnameVerifier;
+
+                    private Retryer retryer = new Retryer.Default();
+                        --> feign.Retryer.Default.Default()
+                            --> this(100, SECONDS.toMillis(1), 5);
+                                --> this.period = period;
+                                    this.maxPeriod = maxPeriod;
+                                    this.maxAttempts = maxAttempts;
+                                    this.attempt = 1;
+
+                    private Logger logger = new NoOpLogger();
+                    private Encoder encoder = new Encoder.Default();
+                        --> feign.codec.Encoder.Default()
+
+                    private Decoder decoder = new Decoder.Default();
+                        --> feign.codec.Decoder.Default()
+
+                    private QueryMapEncoder queryMapEncoder = new QueryMapEncoder.Default();
+                    private ErrorDecoder errorDecoder = new ErrorDecoder.Default();
+                    private Options options = new Options();
+                    private InvocationHandlerFactory invocationHandlerFactory = new InvocationHandlerFactory.Default();
+                        --> feign.InvocationHandlerFactory.Default
+                            --> return new ReflectiveFeign.FeignInvocationHandler(target, dispatch);
+                                --> this.target = checkNotNull(target, "target");
+                                    this.dispatch = checkNotNull(dispatch, "dispatch for %s", target);
+
+                    private boolean decode404;
+                    private boolean closeAfterDecode = true;
+                    private ExceptionPropagationPolicy propagationPolicy = NONE;
+
+            // 1. 调用target传入目标接口以及请求URL
+        --> feign.Feign.Builder.target(java.lang.Class<T>, java.lang.String)
+            --> Target<T> target = new HardCodedTarget<T>(apiType, url)
+                --> this.type = checkNotNull(type, "type"); // interface com.liang.feign.GitHub
+                    this.name = checkNotNull(emptyToNull(name), "name"); // https://api.github.com
+                    this.url = checkNotNull(emptyToNull(url), "url"); // https://api.github.com
+
+                //2.根据Target包装对象创建目标接口的实例对象
+            --> return target(target)
+                    // 3. 构建Feign对象
+                --> Feign feign = feign.Feign.Builder.build();
+                    --> feign.SynchronousMethodHandler.Factory synchronousMethodHandlerFactory = new SynchronousMethodHandler.Factory(client, retryer, requestInterceptors, logger, logLevel, decode404, closeAfterDecode, propagationPolicy)
+                        --> this.client = checkNotNull(client, "client");
+                            this.retryer = checkNotNull(retryer, "retryer");
+                            this.requestInterceptors = checkNotNull(requestInterceptors, "requestInterceptors");
+                            this.logger = checkNotNull(logger, "logger");
+                            this.logLevel = checkNotNull(logLevel, "logLevel");
+                            this.decode404 = decode404;
+                            this.closeAfterDecode = closeAfterDecode;
+                            this.propagationPolicy = propagationPolicy;
+
+                    --> feign.ReflectiveFeign.ParseHandlersByName handlersByName = new ParseHandlersByName(contract, options, encoder, decoder, queryMapEncoder, errorDecoder, synchronousMethodHandlerFactory);
+                        --> this.contract = contract;
+                            this.options = options;
+                            this.factory = factory;
+                            this.errorDecoder = errorDecoder;
+                            this.queryMapEncoder = queryMapEncoder;
+                            this.encoder = checkNotNull(encoder, "encoder");
+                            this.decoder = checkNotNull(decoder, "decoder");
+
+                    --> return new ReflectiveFeign(handlersByName, invocationHandlerFactory, queryMapEncoder);
+                        --> this.targetToHandlersByName = targetToHandlersByName;
+                            this.factory = factory;
+                            this.queryMapEncoder = queryMapEncoder;
+
+                    //1. 这里是创建目录接口实例对象的真正地方
+                    //这里可以看到是使用了jdk自带的动态代理实现
+                    //可以很清楚的看到返回的是目标接口的代理对象
+                --> return feign.newInstance(target);
+                    --> Map<String, MethodHandler> nameToHandler = targetToHandlersByName.apply(target);
+                        --> List<MethodMetadata> metadata = contract.parseAndValidatateMetadata(key.type()); //interface com.liang.feign.GitHub
+
+                            --> feign.Contract.BaseContract.parseAndValidatateMetadata(interface com.liang.feign.GitHub)
+                                --> Map<String, MethodMetadata> result = new LinkedHashMap<String, MethodMetadata>();
+
+                                --> for (Method method : com.liang.feign.GitHub.getMethods())
+                                    --> MethodMetadata metadata = parseAndValidateMetadata(targetType, method); // targetType = interface com.liang.feign.GitHub; method = public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String)
+                                        --> MethodMetadata data = new MethodMetadata();
+                                            --> private RequestTemplate template = new RequestTemplate();
+                                            --> private List<String> formParams = new ArrayList<String>();
+                                            --> private String configKey;
+                                            --> private transient Type returnType;
+                                            --> private Integer urlIndex;
+                                            --> private Integer bodyIndex;
+                                            --> private Integer headerMapIndex;
+                                            --> private Integer queryMapIndex;
+                                            --> private boolean queryMapEncoded;
+                                            --> private transient Type bodyType;
+
+                                        --> Type type = Types.resolve(Type context, Class<?> contextRawType, Type toResolve) // context = interface com.liang.feign.GitHub; contextRawType = interface com.liang.feign.GitHub; toResolve=java.util.List<com.liang.feign.Contributor>
+                                            --> ParameterizedType original = (ParameterizedType) toResolve;
+                                            --> Type ownerType = original.getOwnerType(); // null
+                                            --> Type newOwnerType = resolve(context, contextRawType, ownerType); // null
+                                                --> return Types.resolve(null, interface com.liang.feign.GitHub, null)
+                                                    --> return toResolve; // null
+
+                                            --> Type[] args = original.getActualTypeArguments();
+
+                                            --> Type resolvedTypeArgument = resolve(context, contextRawType, args[t]); // context= interface com.liang.feign.GitHub; contextRawType = interface com.liang.feign.GitHub; args[t] = class com.liang.feign.Contributor
+                                            --> return original;
+
+                                        --> data.returnType(type); // type = java.util.List<com.liang.feign.Contributor>
+
+                                        --> String key = Feign.configKey(targetType, method); // GitHub#contributors(String,String)
+                                        --> data.configKey(key);
+
+                                        --> processAnnotationOnClass(data, targetType);
+                                            --> if (targetType.isAnnotationPresent(Headers.class))
+                                            --> String[] headersOnType = targetType.getAnnotation(Headers.class).value();
+                                            --> Map<String, Collection<String>> headers = toMap(headersOnType);
+                                            --> headers.putAll(data.template().headers());
+                                            --> data.template().headers(null); // to clear
+                                            --> data.template().headers(headers);
+
+                                        --> for (Annotation methodAnnotation : method.getAnnotations())
+                                            --> processAnnotationOnMethod(data, methodAnnotation, method);
+                                                --> if (annotationType == RequestLine.class)
+                                                --> String requestLine = RequestLine.class.cast(methodAnnotation).value(); // GET /repos/{owner}/{repo}/contributors
+                                                --> data.template().method(HttpMethod.valueOf(requestLineMatcher.group(1))); // GET
+
+                                                --> data.template().uri(requestLineMatcher.group(2)); // /repos/{owner}/{repo}/contributors
+                                                --> data.template().decodeSlash(RequestLine.class.cast(methodAnnotation).decodeSlash()); // true
+
+                                        --> Class<?>[] parameterTypes = method.getParameterTypes(); // class java.lang.String,class java.lang.String
+
+                                        --> Annotation[][] parameterAnnotations = method.getParameterAnnotations() //@feign.Param(expander=class feign.Param$ToStringExpander, encoded=false, value=owner); @feign.Param(expander=class feign.Param$ToStringExpander, encoded=false, value=repo)
+
+                                        --> boolean isHttpAnnotation = processAnnotationsOnParameter(data, parameterAnnotations[i], i);
+                                            --> Param paramAnnotation = (Param) annotation;
+                                            --> String name = paramAnnotation.value(); // owner/repo
+                                            --> nameParam(data, name, paramIndex);
+                                                --> data.indexToName().put(0, owner);
+
+                                            --> isHttpAnnotation = true
+                                            --> return isHttpAnnotation;
+
+                                        --> return data;
+
+                                    --> result.put(metadata.configKey(), metadata); // GitHub#contributors(String,String),metadata
+
+                                --> return new ArrayList<>(result.values());
+
+                        --> Map<String, MethodHandler> result = new LinkedHashMap<String, MethodHandler>();
+
+                        --> for (MethodMetadata md : metadata)
+                            --> BuildTemplateByResolvingArgs buildTemplate = new BuildTemplateByResolvingArgs(md, queryMapEncoder);
+                                --> feign.ReflectiveFeign.BuildTemplateByResolvingArgs.BuildTemplateByResolvingArgs
+                                    --> this.metadata = metadata;
+                                        this.queryMapEncoder = queryMapEncoder;
+
+                            --> MethodHandler handler = factory.create(target, md, buildTemplate, options, decoder, errorDecoder);
+                                --> feign.SynchronousMethodHandler.Factory.create(target, md, buildTemplate, options, decoder, errorDecoder)
+                                    --> return new SynchronousMethodHandler(target, client, retryer, requestInterceptors, logger,
+                                                  logLevel, md, buildTemplateFromArgs, options, decoder,
+                                                  errorDecoder, decode404, closeAfterDecode, propagationPolicy);
+                                        --> this.target = checkNotNull(target, "target");
+                                            this.client = checkNotNull(client, "client for %s", target);
+                                            this.retryer = checkNotNull(retryer, "retryer for %s", target);
+                                            this.requestInterceptors = checkNotNull(requestInterceptors, "requestInterceptors for %s", target);
+                                            this.logger = checkNotNull(logger, "logger for %s", target);
+                                            this.logLevel = checkNotNull(logLevel, "logLevel for %s", target);
+                                            this.metadata = checkNotNull(metadata, "metadata for %s", target);
+                                            this.buildTemplateFromArgs = checkNotNull(buildTemplateFromArgs, "metadata for %s", target);
+                                            this.options = checkNotNull(options, "options for %s", target);
+                                            this.errorDecoder = checkNotNull(errorDecoder, "errorDecoder for %s", target);
+                                            this.decoder = checkNotNull(decoder, "decoder for %s", target);
+                                            this.decode404 = decode404;
+                                            this.closeAfterDecode = closeAfterDecode;
+                                            this.propagationPolicy = propagationPolicy;
+
+                            --> result.put(md.configKey(),handler); //GitHub#contributors(String,String), handler
+
+                        --> return result;
+
+                    --> Map<Method, MethodHandler> methodToHandler = new LinkedHashMap<Method, MethodHandler>();
+
+                    --> for (Method method : target.type().getMethods())
+                        --> methodToHandler.put(method, nameToHandler.get(Feign.configKey(target.type(), method))); //key= public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String);value = SynchronousMethodHandler
+
+                    --> InvocationHandler handler = factory.create(target, methodToHandler); // handler = HardCodedTarget(type=GitHub, url=https://api.github.com)
+                        --> return new ReflectiveFeign.FeignInvocationHandler(target, dispatch);
+                            --> this.target = checkNotNull(target, "target");
+                                this.dispatch = checkNotNull(dispatch, "dispatch for %s", target);
+
+                        //这里可以看到是使用了jdk自带的动态代理实现的
+                        //那么我们知道jdk动态代理真正执行的是InvocationHandler接口中的invoke方法，我们再跟踪invoke，看下执行目标接口方法时具体逻辑。
+                    --> T proxy = (T) Proxy.newProxyInstance(target.type().getClassLoader(),new Class<?>[] {target.type()}, handler);
+
+                    --> return proxy;
+
+
+    --> List<Contributor> contributors = github.contributors("OpenFeign", "feign");
+            //2. 执行目标接口方法带来具体实现（FeignInvocationHandler）
+        --> feign.ReflectiveFeign.FeignInvocationHandler.invoke(Object proxy, Method method, Object[] args)
+                //在此我们可以看出目标函数除了equals，hashCode，toString方法外都会调用this.dispatch.get(method)).invoke(args)
+                //dispatch是目标函数代理类集合，目标接口中每个函数都会对应有一个MethodHandler类，至于怎么得到的有兴趣可以查看源码
+            --> return dispatch.get(method).invoke(args); // method = public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String);args=["OpenFeign","feign"]
+                --> feign.SynchronousMethodHandler.invoke(Object[] argv);
+                        //1. 接口方法执行都会调用其对应的invoke方法
+                    --> RequestTemplate template = buildTemplateFromArgs.create(argv);
+                        --> RequestTemplate mutable = RequestTemplate.from(metadata.template())
+                            --> RequestTemplate template =
+                                        new RequestTemplate(requestTemplate.target, requestTemplate.fragment,
+                                            requestTemplate.uriTemplate,
+                                            requestTemplate.method, requestTemplate.charset,
+                                            requestTemplate.body, requestTemplate.decodeSlash, requestTemplate.collectionFormat);
+                                --> this.target = target;
+                                    this.fragment = fragment;
+                                    this.uriTemplate = uriTemplate;
+                                    this.method = method;
+                                    this.charset = charset;
+                                    this.body = body;
+                                    this.decodeSlash = decodeSlash;
+                                    this.collectionFormat = (collectionFormat != null) ? collectionFormat : CollectionFormat.EXPLODED;
+
+                            --> return template;
+
+                        --> Map<String, Object> varBuilder = new LinkedHashMap<String, Object>();
+
+                        --> for (Entry<Integer, Collection<String>> entry : metadata.indexToName().entrySet())
+                            --> int i = entry.getKey(); // 0/1
+                            --> Object value = argv[entry.getKey()]; // OpenFeign/feign
+                            --> varBuilder.put(name, value); // name = owner/repo ;value = OpenFeign/feign
+
+                        --> RequestTemplate template = resolve(argv, mutable, varBuilder);
+                            --> feign.ReflectiveFeign.BuildTemplateByResolvingArgs.resolve(argv, mutable, varBuilder)
+                                --> return mutable.resolve(variables);
+                                    --> feign.RequestTemplate.resolve(java.util.Map<java.lang.String,?>)
+                                        --> StringBuilder uri = new StringBuilder();
+
+                                        --> RequestTemplate resolved = RequestTemplate.from(this);
+
+                                        --> uri.append(this.uriTemplate.expand(variables));
+                                            --> StringBuilder resolved = new StringBuilder();
+                                            --> if (chunk instanceof Expression)
+                                                --> String resolvedExpression = this.resolveExpression((Expression) chunk, variables);
+                                                    --> Object value = variables.get(expression.getName()); // OpenFeign/feign
+                                                    --> String expanded = expression.expand(value, this.encode.isEncodingRequired());
+                                                        --> feign.template.Expressions.SimpleExpression.expand(Object variable, boolean encode) // true
+                                                            --> StringBuilder expanded = new StringBuilder();
+                                                            --> expanded.append((encode) ? encode(variable) : variable);
+                                                            --> return expanded.toString();
+                                                    --> return expanded;
+
+                                                --> resolved.append(resolvedExpression);
+                                            --> else
+                                                --> resolved.append(chunk.getValue());
+
+                                            --> return resolved.toString(); // /repos/OpenFeign/feign/contributors
+
+                                        --> resolved.uri(uri.toString()) // /repos/OpenFeign/feign/contributors
+
+                                        --> resolved.body(this.body.expand(variables))
+
+                                        --> return resolved;
+
+                        --> return template;
+
+                    --> Options options = findOptions(argv);
+
+                        //重试组件
+                    --> Retryer retryer = this.retryer.clone();
+
+                        //执行请求并解码
+                    --> return executeAndDecode(template, options);
+                            //2 构建request请求并执行和解码
+                        --> feign.SynchronousMethodHandler.executeAndDecode(RequestTemplate template, Options options)
+                                //1). 获取request请求
+                            --> Request request = targetRequest(template);
+                                    //3 组装request请求，这里同时完成了拦截器调用的逻辑
+                                --> feign.SynchronousMethodHandler.targetRequest(RequestTemplate template)
+                                        //获取当前请求的所有拦截器
+                                    --> for (RequestInterceptor interceptor : requestInterceptors)
+                                            //依次调用拦截器进行拦截操作
+                                        --> interceptor.apply(template);
+
+                                        //返回Request对象
+                                    --> return target.apply(template);
+                                        --> feign.Target.HardCodedTarget.apply(RequestTemplate input)
+                                            --> input.target(url()) // https://api.github.com
+                                            --> return input.request(); // request
+                                                --> return Request.create(this.method, this.url(), this.headers(), this.requestBody()); // this.url = https://api.github.com/repos/OpenFeign/feign/contributors
+                                                    --> return new Request(httpMethod, url, headers, body);
+                                                        --> this.httpMethod = checkNotNull(method, "httpMethod of %s", method.name());
+                                                            this.url = checkNotNull(url, "url");
+                                                            this.headers = checkNotNull(headers, "headers of %s %s", method, url);
+                                                            this.body = body;
+
+                            --> Response response = client.execute(request, options);
+                                --> feign.Client.Default.execute(Request request, Options options);
+                                    --> HttpURLConnection connection = convertAndSend(request, options);
+                                        --> final HttpURLConnection connection = (HttpURLConnection) new URL(request.url()).openConnection(); // url=https://api.github.com/repos/OpenFeign/feign/contributors; connection = sun.net.www.protocol.https.DelegateHttpsURLConnection:https://api.github.com/repos/OpenFeign/feign/contributors
+                                        --> HttpsURLConnection sslCon = (HttpsURLConnection) connection;
+                                        --> connection.setConnectTimeout(options.connectTimeoutMillis());
+                                        --> connection.setReadTimeout(options.readTimeoutMillis());
+                                        --> connection.setAllowUserInteraction(false);
+                                        --> connection.setInstanceFollowRedirects(options.isFollowRedirects());
+                                        --> connection.setRequestMethod(request.httpMethod().name());
+                                        --> connection.addRequestProperty("Accept", "*/*");
+                                        --> connection.setDoOutput(true);
+                                        --> OutputStream out = connection.getOutputStream();
+                                        --> out.write(request.requestBody().asBytes());
+
+                                        --> return connection;
+
+
+                                    --> return convertResponse(connection, request);
+                                        --> feign.Client.Default.convertResponse(HttpURLConnection connection, Request request)
+                                            --> Map<String, Collection<String>> headers = new LinkedHashMap<String, Collection<String>>();
+                                            --> for (Map.Entry<String, List<String>> field : connection.getHeaderFields().entrySet())
+
+                                                --> headers.put(field.getKey(), field.getValue()); //里面存放返回的消息头
+
+                                            --> InputStream stream = connection.getInputStream(); // 默认调用HttpUrlConnection的方法进行数据发送，这里是收到的请求响应
+
+                                            --> return Response.builder()
+                                                          .status(status)
+                                                          .reason(reason)
+                                                          .headers(headers)
+                                                          .request(request)
+                                                          .body(stream, length)
+                                                          .build();
+                                                --> this.status = builder.status;
+                                                    this.request = builder.request;
+                                                    this.reason = builder.reason; // nullable
+                                                    this.headers = (builder.headers != null) ? Collections.unmodifiableMap(caseInsensitiveCopyOf(builder.headers)) : new LinkedHashMap<>();
+                                                    this.body = builder.body; // nullable
+
+                            --> Object result = decode(response);
+                                --> feign.SynchronousMethodHandler.decode(response)
+                                    --> return decoder.decode(response, metadata.returnType());
+                                        --> feign.gson.GsonDecoder.decode(Response response, Type type)
+                                            --> Reader reader = response.body().asReader();
+                                            --> return gson.fromJson(reader, type);
+
+                            --> return result;
+
+
+    --> System.out.println(contributors);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

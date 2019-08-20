@@ -6,6 +6,7 @@ import feign.gson.GsonDecoder;
 import feign.gson.GsonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
+import sun.net.www.http.HttpClient;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ public class GithubTest {
                 //.decoder(new JacksonDecoder())
                 .logger(new Slf4jLogger())
                 .logLevel(Logger.Level.FULL)
-                .client(new OkHttpClient())
+                //.client(new OkHttpClient())
                 //.client(new HttpClient())
                 //.client(RibbonClient.create())
                 .target(GitHub.class, "https://api.github.com");
