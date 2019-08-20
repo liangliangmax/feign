@@ -47,13 +47,15 @@
     <module>java8</module>
     <module>mock</module>
     <module>benchmark</module>
+
     <module>spring-cloud-openfeign-core</module>
     <module>spring-cloud-openfeign-dependencies</module>
     <module>spring-cloud-starter-openfeign</module>
 
-    <module>feign-form</module>
-    <module>feign-form-spring</module>
-    <module>liang</module>
+    <!--<module>feign-form</module>-->
+    <!--<module>feign-form-spring</module>-->
+    <module>liang-feign</module>
+    <!--<module>liang-openfeign</module>-->
   </modules>
 
   <properties>

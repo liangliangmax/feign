@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+
+feign:
+  hystrix:
+    enabled: true
+  httpclient:
+    enabled: true
+
+#hystrix
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          strategy: THREAD
+          thread:
+            timeoutInMilliseconds: 30000
+    threadpool:
+      default:
+        coreSize: 500 #缺省为10
