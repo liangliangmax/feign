@@ -1,2 +1,537 @@
 com.liang.BootstrapApplication.main()
-    -->
+    --> SpringApplication.run(BootstrapApplication.class,args);
+        --> ConfigurableApplicationContext context = run(new Class<?>[] { primarySource }, args);
+            --> return run(new Class<?>[] { primarySource }, args);
+                --> SpringApplication springApplication = new SpringApplication(primarySources);
+                    --> this(null, primarySources);
+                            //设置resourceLoader，这里为null
+                        --> this.resourceLoader = resourceLoader;
+                            //设置启动的主类
+                        --> this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources)); // class com.liang.BootstrapApplication
+                            //设置容器类型
+                        --> this.webApplicationType = WebApplicationType.deduceFromClasspath();
+                            --> return WebApplicationType.SERVLET;
+
+                            //根据ApplicationContextInitializer.class加载jar包中spring.facotries默认的key为根据org.springframework.context.ApplicationContextInitializer的配置，可能不同的jar包维护的数据不同，然后进行实例化，所以加载出来的是个list
+                        --> <T> Collection<T> initializers = (Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class)
+                            --> return getSpringFactoriesInstances(type, new Class<?>[] {});
+                                    //获取默认的classLoader
+                                --> ClassLoader classLoader = getClassLoader();
+                                    --> return ClassUtils.getDefaultClassLoader();
+                                        --> ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                                        --> return cl;
+
+                                    //解析spring.facotries文件，加载所有jar包中默认的配置类的名称为ApplicationContextInitializer对应的类，放到list中
+                                --> List<String> list = SpringFactoriesLoader.loadFactoryNames(type, classLoader);
+                                    --> org.springframework.core.io.support.SpringFactoriesLoader.loadFactoryNames(Class<?> factoryClass,ClassLoader classLoader);
+                                        --> String factoryClassName = factoryClass.getName(); //org.springframework.context.ApplicationContextInitializer
+                                        --> Map<String, List<String>> map = loadSpringFactories(classLoader);
+
+                                            --> MultiValueMap<String, String> result = new LinkedMultiValueMap<>();
+
+                                            --> Enumeration<URL> urls = (classLoader != null ? classLoader.getResources(FACTORIES_RESOURCE_LOCATION) : ClassLoader.getSystemResources(FACTORIES_RESOURCE_LOCATION));
+                                                --> Enumeration<URL>[] tmp = (Enumeration<URL>[]) new Enumeration<?>[2];
+                                                    //从spring.factory文件中读取固定的一些基本配置类
+                                                --> tmp[0] = getBootstrapResources(name); //META-INF/spring.factories
+                                                    --> java.lang.ClassLoader.getBootstrapResources("META-INF/spring.factories")
+                                                        --> final Enumeration<Resource> e = getBootstrapClassPath().getResources(name);
+                                                            --> return sun.misc.Launcher.getBootstrapClassPath()
+                                                        --> return new Enumeration<URL> () {
+                                                                        public URL nextElement() {
+                                                                            return e.nextElement().getURL();
+                                                                        }
+                                                                        public boolean hasMoreElements() {
+                                                                            return e.hasMoreElements();
+                                                                        }
+                                                                    }
+
+                                                --> tmp[1] = parent.getResources(name); //META-INF/spring.factories
+                                                    --> return java.util.Collections.emptyEnumeration();
+
+                                                --> return new CompoundEnumeration<>(tmp);
+
+                                            --> while (urls.hasMoreElements())
+                                                    // url就是jar:file:/Users/liang/tool/maven%20repo/org/springframework/boot/spring-boot/2.1.1.RELEASE/spring-boot-2.1.1.RELEASE.jar!/META-INF/spring.factories文件
+                                                --> URL url = urls.nextElement();
+                                                --> UrlResource resource = new UrlResource(url);
+                                                    // 从文件中读取配置文件
+                                                --> Properties properties = PropertiesLoaderUtils.loadProperties(resource);
+                                                    //循环properties，把里面的factoryClassName都拿出来，放到result里面
+                                                --> String factoryClassName = ((String) entry.getKey()).trim();
+                                                --> result.add(factoryClassName, factoryName.trim());
+
+                                            --> cache.put(classLoader, result);
+                                                //result里面存放的是key-list那种取得的类
+                                            --> return result;
+
+                                        --> return map.getOrDefault(factoryClassName, Collections.emptyList());
+
+                                    //将加载出来的factoryClassName进行去重
+                                --> Set<String> names = new LinkedHashSet<>(list);
+
+                                    //将读取出来的factoryClassName进行实例化，就会出现各种factory
+                                --> List<T> instances = createSpringFactoriesInstances(type, parameterTypes,classLoader, args, names); //type = interface org.springframework.context.ApplicationContextInitializer; names = {org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer,org.springframework.boot.context.ContextIdApplicationContextInitializer,org.springframework.boot.context.config.DelegatingApplicationContextInitializer,org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer,org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer,org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener}
+                                    --> List<T> instances = new ArrayList<>(names.size());
+                                    --> for (String name : names)
+                                        --> Class<?> instanceClass = ClassUtils.forName(name, classLoader);
+                                        --> T instance = (T) BeanUtils.instantiateClass(constructor, args);
+                                                //用反射将构造函数弄成可见的状态
+                                            --> ReflectionUtils.makeAccessible(ctor);
+                                                //执行初始化
+                                            --> return ctor.newInstance(args)
+
+                                        --> instances.add(instance);
+
+                                    --> return instances;
+
+                                --> AnnotationAwareOrderComparator.sort(instances);
+                                        // 如果实现了Ordered接口就能排序
+                                    --> org.springframework.core.OrderComparator.compare(@Nullable Object o1, @Nullable Object o)
+                                        --> return doCompare(o1, o2, null);
+                                            --> findOrder(Object obj)
+                                                --> (Ordered) obj).getOrder()
+
+                                --> return instances;
+
+                            //对SpringApplication的initializers属性进行初始化
+                        --> setInitializers(initializers);
+                            --> SpringApplication.initializers.addAll(initializers);
+
+                            //从//META-INF/spring.factories获取所有的ApplicationListener接口得实现类
+                        --> Collection listeners = (Collection) getSpringFactoriesInstances(ApplicationListener.class);
+                            --> 过程和上面初始化initializers相同，只不过读取的类不同
+
+                        --> setListeners(listeners);
+                            --> SpringApplication.listeners.addAll(listeners);
+
+                        --> this.mainApplicationClass = deduceMainApplicationClass();
+
+                    //加载完一些基本类，监听类，现在开始运行
+                --> return springApplication.run(args);
+                    --> ConfigurableApplicationContext context = null;
+                    --> configureHeadlessProperty();
+                            //java.awt.headless是J2SE的一种模式，用于在缺失显示屏、鼠标或者键盘时的系统配置。对于后端服务来讲，很多都是需要将这个属性设置为true的。
+                        --> System.setProperty("java.awt.headless", System.getProperty("java.awt.headless", Boolean.toString(this.headless)));
+
+                        //从配置文件中读取一些默认的监听器
+                    --> SpringApplicationRunListeners listeners = SpringApplication.getRunListeners(args);
+                        --> Class<?>[] types = new Class<?>[] { SpringApplication.class, String[].class };
+
+                        --> Collection runListeners = getSpringFactoriesInstances(SpringApplicationRunListener.class, types, this, args); // org.springframework.boot.context.event.EventPublishingRunListener
+                            --> 这里加载SpringApplicationRunListener实现类的方法和之前的是一样的
+
+                        --> return new SpringApplicationRunListeners(logger, runListeners);
+                            --> org.springframework.boot.SpringApplicationRunListeners
+                                --> this.log = log;
+                                --> this.listeners = new ArrayList<>(listeners);
+                        //启动监听器链
+                    --> listeners.starting();
+                        --> org.springframework.boot.SpringApplicationRunListeners.starting()
+                            --> for (SpringApplicationRunListener listener : this.listeners)
+                                --> listener.starting();
+                                        //系统中默认添加了个EventPublishingRunListener
+                                    --> org.springframework.boot.context.event.EventPublishingRunListener.starting()
+                                        --> ApplicationStartingEvent event = new ApplicationStartingEvent(this.application, this.args)
+                                            --> org.springframework.boot.context.event.SpringApplicationEvent.SpringApplicationEvent(SpringApplication application, String[] args)
+                                                --> org.springframework.context.ApplicationEvent.ApplicationEvent((Object application))
+                                                    --> this.source = source;
+                                                --> this.args = args;
+
+                                        --> this.initialMulticaster.multicastEvent(event);
+                                            --> org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(org.springframework.context.ApplicationEvent)
+                                                --> ResolvableType resolvableType = resolveDefaultEventType(event)
+                                                    --> org.springframework.context.event.SimpleApplicationEventMulticaster.resolveDefaultEventType(ApplicationEvent event)
+                                                        --> return ResolvableType.forInstance(event);
+                                                            --> return ResolvableType.forClass(instance.getClass());
+                                                                --> return new ResolvableType(clazz);
+                                                                    --> this.resolved = (clazz != null ? clazz : Object.class); //class org.springframework.boot.context.event.ApplicationStartingEvent
+                                                                    --> this.type = this.resolved; // class org.springframework.boot.context.event.ApplicationStartingEvent
+                                                                    --> this.typeProvider = null;
+                                                                    --> this.variableResolver = null;
+                                                                    --> this.componentType = null;
+                                                                    --> this.hash = null;
+
+                                                --> multicastEvent(event, resolvableType);
+                                                        //如果resolvableType是空，就再执行上面的步骤，此处不是空
+                                                    --> ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
+                                                    --> List<ApplicationListener> listeners = getApplicationListeners(event, type) //event = org.springframework.boot.context.event.ApplicationStartingEvent[source=org.springframework.boot.SpringApplication@247bddad]
+                                                        --> Object source = event.getSource(); // org.springframework.boot.SpringApplication@247bddad
+                                                        --> Class<?> sourceType = (source != null ? source.getClass() : null); // class org.springframework.boot.SpringApplication
+                                                        --> ListenerCacheKey cacheKey = new ListenerCacheKey(eventType, sourceType);
+                                                            --> org.springframework.context.event.AbstractApplicationEventMulticaster.ListenerCacheKey.ListenerCacheKey
+                                                                --> this.eventType = eventType;  //org.springframework.boot.context.event.ApplicationStartingEvent
+                                                                --> this.sourceType = sourceType; // class org.springframework.boot.SpringApplication
+
+                                                        --> ListenerRetriever retriever = this.retrieverCache.get(cacheKey);
+                                                        --> retriever = new ListenerRetriever(true);
+                                                            --> org.springframework.context.event.AbstractApplicationEventMulticaster.ListenerRetriever.ListenerRetriever
+                                                                --> this.preFiltered = preFiltered; // true
+                                                        --> Collection<ApplicationListener<?>> listeners = retrieveApplicationListeners(eventType, sourceType, retriever);
+                                                            --> org.springframework.context.event.AbstractApplicationEventMulticaster.retrieveApplicationListeners(eventType, sourceType, retriever)
+                                                                --> List<ApplicationListener<?>> allListeners = new ArrayList<>();
+                                                                --> Set<ApplicationListener<?>> listeners = new LinkedHashSet<>(this.defaultRetriever.applicationListeners); //就是之前读出来的一堆listener
+                                                                --> Set<String> listenerBeans = new LinkedHashSet<>(this.defaultRetriever.applicationListenerBeans);
+                                                                --> for (ApplicationListener<?> listener : listeners)
+                                                                    --> if (supportsEvent(listener, eventType, sourceType)
+                                                                        --> listener instanceof GenericApplicationListener
+                                                                        --> allListeners.add(listener) // 循环完毕之后原来13个监听器就剩下4个了，LoggingApplicationListener,BackgroundPreinitializer,DelegatingApplicationListener,LiquibaseServiceLocatorApplicationListener
+                                                                --> return allListeners;
+
+                                                        --> return listeners;
+
+                                                        //循环调用刚才剩下的4个listener
+                                                    --> for (final ApplicationListener<?> listener : listeners)
+                                                            //如果executor不为空，就用executor多线程执行invokeListener方法，如果是空，就直接调用invokeListener方法
+                                                        --> Executor executor = getTaskExecutor(); // null
+                                                        --> invokeListener(listener, event);
+                                                            --> ErrorHandler errorHandler = getErrorHandler(); // null
+                                                            --> doInvokeListener(listener, event);
+                                                                --> listener.onApplicationEvent(event);
+
+                        //设置通过命令传进来的参数
+                    --> ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+                        --> org.springframework.boot.DefaultApplicationArguments.DefaultApplicationArguments
+                            --> this.source = new Source(args);
+                                --> org.springframework.core.env.SimpleCommandLinePropertySource.SimpleCommandLinePropertySource(java.lang.String...)
+                                    --> org.springframework.core.env.SimpleCommandLineArgsParser.parse(java.lang.String...)
+                                            //这一步会将main方法传过来的一些参数进行解析，里面解析了类似于 --spring.profile.active=dev这种参数
+                                        --> CommandLineArgs commandLineArgs = new CommandLineArgs();
+                                        --> return commandLineArgs;
+                            --> this.args = args;
+
+                    --> ConfigurableEnvironment environment = prepareEnvironment(listeners,applicationArguments);
+                        --> ConfigurableEnvironment environment = getOrCreateEnvironment();
+                            --> return new StandardServletEnvironment();
+
+                        --> configureEnvironment(environment, applicationArguments.getSourceArgs());
+                                //这是个类型转换器
+                            --> ConversionService conversionService = ApplicationConversionService.getSharedInstance();
+                                --> org.springframework.boot.convert.ApplicationConversionService.getSharedInstance()
+                                    --> ApplicationConversionService sharedInstance = ApplicationConversionService.sharedInstance;
+                                    --> sharedInstance = new ApplicationConversionService();
+                                        --> public ApplicationConversionService()
+                                            --> configure(this);
+                                                --> DefaultConversionService.addDefaultConverters(registry);
+                                                    --> addScalarConverters(converterRegistry);
+                                                        --> converterRegistry.addConverterFactory(new NumberToNumberConverterFactory());
+
+                                                            converterRegistry.addConverterFactory(new StringToNumberConverterFactory());
+                                                            converterRegistry.addConverter(Number.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverter(new StringToCharacterConverter());
+                                                            converterRegistry.addConverter(Character.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverter(new NumberToCharacterConverter());
+                                                            converterRegistry.addConverterFactory(new CharacterToNumberFactory());
+
+                                                            converterRegistry.addConverter(new StringToBooleanConverter());
+                                                            converterRegistry.addConverter(Boolean.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverterFactory(new StringToEnumConverterFactory());
+                                                            converterRegistry.addConverter(new EnumToStringConverter((ConversionService) converterRegistry));
+
+                                                            converterRegistry.addConverterFactory(new IntegerToEnumConverterFactory());
+                                                            converterRegistry.addConverter(new EnumToIntegerConverter((ConversionService) converterRegistry));
+
+                                                            converterRegistry.addConverter(new StringToLocaleConverter());
+                                                            converterRegistry.addConverter(Locale.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverter(new StringToCharsetConverter());
+                                                            converterRegistry.addConverter(Charset.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverter(new StringToCurrencyConverter());
+                                                            converterRegistry.addConverter(Currency.class, String.class, new ObjectToStringConverter());
+
+                                                            converterRegistry.addConverter(new StringToPropertiesConverter());
+                                                            converterRegistry.addConverter(new PropertiesToStringConverter());
+
+                                                            converterRegistry.addConverter(new StringToUUIDConverter());
+                                                            converterRegistry.addConverter(UUID.class, String.class, new ObjectToStringConverter());
+                                                            converterRegistry.addConverter(UUID.class, String.class, new ObjectToStringConverter());
+
+                                                        addCollectionConverters(converterRegistry);
+                                                        --> ConversionService conversionService = (ConversionService) converterRegistry;
+
+                                                            converterRegistry.addConverter(new ArrayToCollectionConverter(conversionService));
+                                                            converterRegistry.addConverter(new CollectionToArrayConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new ArrayToArrayConverter(conversionService));
+                                                            converterRegistry.addConverter(new CollectionToCollectionConverter(conversionService));
+                                                            converterRegistry.addConverter(new MapToMapConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new ArrayToStringConverter(conversionService));
+                                                            converterRegistry.addConverter(new StringToArrayConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new ArrayToObjectConverter(conversionService));
+                                                            converterRegistry.addConverter(new ObjectToArrayConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new CollectionToStringConverter(conversionService));
+                                                            converterRegistry.addConverter(new StringToCollectionConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new CollectionToObjectConverter(conversionService));
+                                                            converterRegistry.addConverter(new ObjectToCollectionConverter(conversionService));
+
+                                                            converterRegistry.addConverter(new StreamConverter(conversionService));
+
+                                                        converterRegistry.addConverter(new ByteBufferConverter((ConversionService) converterRegistry));
+                                                        converterRegistry.addConverter(new StringToTimeZoneConverter());
+                                                        converterRegistry.addConverter(new ZoneIdToTimeZoneConverter());
+                                                        converterRegistry.addConverter(new ZonedDateTimeToCalendarConverter());
+
+                                                        converterRegistry.addConverter(new ObjectToObjectConverter());
+                                                        converterRegistry.addConverter(new IdToEntityConverter((ConversionService) converterRegistry));
+                                                        converterRegistry.addConverter(new FallbackObjectToStringConverter());
+                                                        converterRegistry.addConverter(new ObjectToOptionalConverter((ConversionService) converterRegistry));
+                                                        converterRegistry.addConverter(new ObjectToOptionalConverter((ConversionService) converterRegistry));
+
+                                                --> DefaultFormattingConversionService.addDefaultFormatters(registry);
+                                                    --> formatterRegistry.addFormatterForFieldAnnotation(new NumberFormatAnnotationFormatterFactory());
+                                                        new DateTimeFormatterRegistrar().registerFormatters(formatterRegistry);
+                                                        new DateFormatterRegistrar().registerFormatters(formatterRegistry);
+
+                                                --> addApplicationFormatters(registry);
+                                                    --> registry.addFormatter(new CharArrayFormatter());
+                                                        registry.addFormatter(new InetAddressFormatter());
+                                                        registry.addFormatter(new IsoOffsetFormatter());
+
+                                                --> addApplicationConverters(registry);
+                                                    --> addDelimitedStringConverters(registry);
+                                                        --> registry.addConverter(new ArrayToDelimitedStringConverter(service));
+                                                            registry.addConverter(new CollectionToDelimitedStringConverter(service));
+                                                            registry.addConverter(new DelimitedStringToArrayConverter(service));
+                                                            registry.addConverter(new DelimitedStringToCollectionConverter(service));
+                                                        registry.addConverter(new StringToDurationConverter());
+                                                        registry.addConverter(new DurationToStringConverter());
+                                                        registry.addConverter(new NumberToDurationConverter());
+                                                        registry.addConverter(new DurationToNumberConverter());
+                                                        registry.addConverter(new StringToDataSizeConverter());
+                                                        registry.addConverter(new NumberToDataSizeConverter());
+                                                        registry.addConverterFactory(new StringToEnumIgnoringCaseConverterFactory());
+
+                                    --> return sharedInstance;
+
+                            --> environment.setConversionService((ConfigurableConversionService) conversionService);
+                                --> org.springframework.core.env.AbstractEnvironment.setConversionService(ConfigurableConversionService conversionService)
+                                    --> this.propertyResolver.setConversionService(conversionService);
+                                        --> org.springframework.core.env.AbstractPropertyResolver.setConversionService
+                                            --> this.conversionService = conversionService;
+
+                                //这一步是将从commandLineProperties解析出来的参数加到environment中，这个例子里面没有命令行参数
+                            --> configurePropertySources(environment, args);
+                                --> MutablePropertySources sources = environment.getPropertySources(); //初始化的时候servlet那个已经放了4个属性到properties里面，[StubPropertySource {name='servletConfigInitParams'}, StubPropertySource {name='servletContextInitParams'}, MapPropertySource {name='systemProperties'}, SystemEnvironmentPropertySource {name='systemEnvironment'}]
+
+                                //设置配置文件的环境，哪个配置文件被激活
+                            --> configureProfiles(environment, args);
+                                    // ensure they are initialized
+                                --> environment.getActiveProfiles();
+                                    --> org.springframework.core.env.AbstractEnvironment.getActiveProfiles
+                                        --> return StringUtils.toStringArray(doGetActiveProfiles());
+                                                //可以带逗号，会通过逗号进行分割，变成数组，赋值给activeProfiles
+                                            --> String profiles = getProperty("spring.profiles.active");
+                                            --> setActiveProfiles(StringUtils.commaDelimitedListToStringArray(StringUtils.trimAllWhitespace(profiles)));
+                                            --> return this.activeProfiles;
+
+                                --> Set<String> profiles = new LinkedHashSet<>(this.additionalProfiles);
+                                --> profiles.addAll(Arrays.asList(environment.getActiveProfiles()));
+                                --> environment.setActiveProfiles(StringUtils.toStringArray(profiles));
+                                    --> org.springframework.core.env.AbstractEnvironment.setActiveProfiles
+                                        --> this.activeProfiles.add(profile);
+
+
+                        --> listeners.environmentPrepared(environment);
+                            --> org.springframework.boot.SpringApplicationRunListeners.environmentPrepared
+                                --> for (SpringApplicationRunListener listener : this.listeners) // EventPublishingRunListener,默认的只有一个
+                                    --> listener.environmentPrepared(environment);
+                                        --> org.springframework.boot.context.event.EventPublishingRunListener.environmentPrepared
+                                            --> ApplicationEnvironmentPreparedEvent applicationEnvironmentPreparedEvent = new ApplicationEnvironmentPreparedEvent(this.application, this.args, environment);
+                                                --> super(application, args);
+                                                    --> this.args = args;
+                                                    --> this.application = application;
+                                                --> this.environment = environment;
+
+                                            --> this.initialMulticaster.multicastEvent(applicationEnvironmentPreparedEvent);
+                                                --> org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(org.springframework.context.ApplicationEvent)
+                                                    --> multicastEvent(event, resolveDefaultEventType(event)); //event = org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent[source=org.springframework.boot.SpringApplication@247bddad];eventType = org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent
+                                                        --> 里面有9个listener，剩下的解析和上面解析listener.starting()调用listener的过程一样,只不过加载的类不一样
+
+                        --> bindToSpringApplication(environment);
+
+                        --> ConfigurationPropertySources.attach(environment);
+
+                        --> return environment;
+
+
+                    --> configureIgnoreBeanInfo(environment);
+                    --> Banner printedBanner = printBanner(environment);
+                    --> context = createApplicationContext();
+                    --> prepareContext(context, environment, listeners, applicationArguments,printedBanner);
+                    --> refreshContext(context);
+                    --> afterRefresh(context, applicationArguments);
+                    --> if (this.logStartupInfo)
+                        --> new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
+
+                    --> listeners.started(context);
+                    --> callRunners(context, applicationArguments);
+
+                    --> listeners.running(context);
+
+                    --> return context;
+
+        --> return context
+
+
+
+
+
+
+
+
+
+    --> List<Contributor> contributors = github.contributors("OpenFeign", "feign");
+            //2. 执行目标接口方法带来具体实现（FeignInvocationHandler）
+        --> feign.ReflectiveFeign.FeignInvocationHandler.invoke(Object proxy, Method method, Object[] args)
+                //在此我们可以看出目标函数除了equals，hashCode，toString方法外都会调用this.dispatch.get(method)).invoke(args)
+                //dispatch是目标函数代理类集合，目标接口中每个函数都会对应有一个MethodHandler类，至于怎么得到的有兴趣可以查看源码
+            --> return dispatch.get(method).invoke(args); // method = public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String);args=["OpenFeign","feign"]
+                --> feign.SynchronousMethodHandler.invoke(Object[] argv);
+                        //1. 接口方法执行都会调用其对应的invoke方法
+                    --> RequestTemplate template = buildTemplateFromArgs.create(argv);
+                        --> RequestTemplate mutable = RequestTemplate.from(metadata.template())
+                            --> RequestTemplate template =
+                                        new RequestTemplate(requestTemplate.target, requestTemplate.fragment,
+                                            requestTemplate.uriTemplate,
+                                            requestTemplate.method, requestTemplate.charset,
+                                            requestTemplate.body, requestTemplate.decodeSlash, requestTemplate.collectionFormat);
+                                --> this.target = target;
+                                    this.fragment = fragment;
+                                    this.uriTemplate = uriTemplate;
+                                    this.method = method;
+                                    this.charset = charset;
+                                    this.body = body;
+                                    this.decodeSlash = decodeSlash;
+                                    this.collectionFormat = (collectionFormat != null) ? collectionFormat : CollectionFormat.EXPLODED;
+
+                            --> return template;
+
+                        --> Map<String, Object> varBuilder = new LinkedHashMap<String, Object>();
+
+                        --> for (Entry<Integer, Collection<String>> entry : metadata.indexToName().entrySet())
+                            --> int i = entry.getKey(); // 0/1
+                            --> Object value = argv[entry.getKey()]; // OpenFeign/feign
+                            --> varBuilder.put(name, value); // name = owner/repo ;value = OpenFeign/feign
+
+                        --> RequestTemplate template = resolve(argv, mutable, varBuilder);
+                            --> feign.ReflectiveFeign.BuildTemplateByResolvingArgs.resolve(argv, mutable, varBuilder)
+                                --> return mutable.resolve(variables);
+                                    --> feign.RequestTemplate.resolve(java.util.Map<java.lang.String,?>)
+                                        --> StringBuilder uri = new StringBuilder();
+
+                                        --> RequestTemplate resolved = RequestTemplate.from(this);
+
+                                        --> uri.append(this.uriTemplate.expand(variables));
+                                            --> StringBuilder resolved = new StringBuilder();
+                                            --> if (chunk instanceof Expression)
+                                                --> String resolvedExpression = this.resolveExpression((Expression) chunk, variables);
+                                                    --> Object value = variables.get(expression.getName()); // OpenFeign/feign
+                                                    --> String expanded = expression.expand(value, this.encode.isEncodingRequired());
+                                                        --> feign.template.Expressions.SimpleExpression.expand(Object variable, boolean encode) // true
+                                                            --> StringBuilder expanded = new StringBuilder();
+                                                            --> expanded.append((encode) ? encode(variable) : variable);
+                                                            --> return expanded.toString();
+                                                    --> return expanded;
+
+                                                --> resolved.append(resolvedExpression);
+                                            --> else
+                                                --> resolved.append(chunk.getValue());
+
+                                            --> return resolved.toString(); // /repos/OpenFeign/feign/contributors
+
+                                        --> resolved.uri(uri.toString()) // /repos/OpenFeign/feign/contributors
+
+                                        --> resolved.body(this.body.expand(variables))
+
+                                        --> return resolved;
+
+                        --> return template;
+
+                    --> Options options = findOptions(argv);
+
+                        //重试组件
+                    --> Retryer retryer = this.retryer.clone();
+
+                        //执行请求并解码
+                    --> return executeAndDecode(template, options);
+                            //2 构建request请求并执行和解码
+                        --> feign.SynchronousMethodHandler.executeAndDecode(RequestTemplate template, Options options)
+                                //1). 获取request请求
+                            --> Request request = targetRequest(template);
+                                    //3 组装request请求，这里同时完成了拦截器调用的逻辑
+                                --> feign.SynchronousMethodHandler.targetRequest(RequestTemplate template)
+                                        //获取当前请求的所有拦截器
+                                    --> for (RequestInterceptor interceptor : requestInterceptors)
+                                            //依次调用拦截器进行拦截操作
+                                        --> interceptor.apply(template);
+
+                                        //返回Request对象
+                                    --> return target.apply(template);
+                                        --> feign.Target.HardCodedTarget.apply(RequestTemplate input)
+                                            --> input.target(url()) // https://api.github.com
+                                            --> return input.request(); // request
+                                                --> return Request.create(this.method, this.url(), this.headers(), this.requestBody()); // this.url = https://api.github.com/repos/OpenFeign/feign/contributors
+                                                    --> return new Request(httpMethod, url, headers, body);
+                                                        --> this.httpMethod = checkNotNull(method, "httpMethod of %s", method.name());
+                                                            this.url = checkNotNull(url, "url");
+                                                            this.headers = checkNotNull(headers, "headers of %s %s", method, url);
+                                                            this.body = body;
+
+                            --> Response response = client.execute(request, options);
+                                --> feign.Client.Default.execute(Request request, Options options);
+                                    --> HttpURLConnection connection = convertAndSend(request, options);
+                                        --> final HttpURLConnection connection = (HttpURLConnection) new URL(request.url()).openConnection(); // url=https://api.github.com/repos/OpenFeign/feign/contributors; connection = sun.net.www.protocol.https.DelegateHttpsURLConnection:https://api.github.com/repos/OpenFeign/feign/contributors
+                                        --> HttpsURLConnection sslCon = (HttpsURLConnection) connection;
+                                        --> connection.setConnectTimeout(options.connectTimeoutMillis());
+                                        --> connection.setReadTimeout(options.readTimeoutMillis());
+                                        --> connection.setAllowUserInteraction(false);
+                                        --> connection.setInstanceFollowRedirects(options.isFollowRedirects());
+                                        --> connection.setRequestMethod(request.httpMethod().name());
+                                        --> connection.addRequestProperty("Accept", "*/*");
+                                        --> connection.setDoOutput(true);
+                                        --> OutputStream out = connection.getOutputStream();
+                                        --> out.write(request.requestBody().asBytes());
+
+                                        --> return connection;
+
+
+                                    --> return convertResponse(connection, request);
+                                        --> feign.Client.Default.convertResponse(HttpURLConnection connection, Request request)
+                                            --> Map<String, Collection<String>> headers = new LinkedHashMap<String, Collection<String>>();
+                                            --> for (Map.Entry<String, List<String>> field : connection.getHeaderFields().entrySet())
+
+                                                --> headers.put(field.getKey(), field.getValue()); //里面存放返回的消息头
+
+                                            --> InputStream stream = connection.getInputStream(); // 默认调用HttpUrlConnection的方法进行数据发送，这里是收到的请求响应
+
+                                            --> return Response.builder()
+                                                          .status(status)
+                                                          .reason(reason)
+                                                          .headers(headers)
+                                                          .request(request)
+                                                          .body(stream, length)
+                                                          .build();
+                                                --> this.status = builder.status;
+                                                    this.request = builder.request;
+                                                    this.reason = builder.reason; // nullable
+                                                    this.headers = (builder.headers != null) ? Collections.unmodifiableMap(caseInsensitiveCopyOf(builder.headers)) : new LinkedHashMap<>();
+                                                    this.body = builder.body; // nullable
+
+                            --> Object result = decode(response);
+                                --> feign.SynchronousMethodHandler.decode(response)
+                                    --> return decoder.decode(response, metadata.returnType());
+                                        --> feign.gson.GsonDecoder.decode(Response response, Type type)
+                                            --> Reader reader = response.body().asReader();
+                                            --> return gson.fromJson(reader, type);
+
+                            --> return result;
+
+
+    --> System.out.println(contributors);

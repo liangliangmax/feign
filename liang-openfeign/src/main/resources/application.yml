@@ -4,7 +4,7 @@ server:
 
 feign:
   hystrix:
-    enabled: true
+    enabled: false
   httpclient:
     enabled: true
 
