@@ -199,6 +199,7 @@ com.liang.BootstrapApplication.main()
                                         --> return commandLineArgs;
                             --> this.args = args;
 
+                        //创建并配置当前Spring Boot应用将要使用的Environment（包括配置要使用的PropertySource以及Profile）。
                     --> ConfigurableEnvironment environment = prepareEnvironment(listeners,applicationArguments);
                         --> ConfigurableEnvironment environment = getOrCreateEnvironment();
                             --> return new StandardServletEnvironment();
@@ -355,17 +356,680 @@ com.liang.BootstrapApplication.main()
                                                         --> 里面有9个listener，剩下的解析和上面解析listener.starting()调用listener的过程一样,只不过加载的类不一样
 
                         --> bindToSpringApplication(environment);
+                            --> Bind binder = Binder.get(environment);
+                                --> org.springframework.boot.context.properties.bind.Binder.get(environment)
+                                    --> Iterable<ConfigurationPropertySource> configurationPropertySources = ConfigurationPropertySources.get(environment);
+                                        --> org.springframework.boot.context.properties.source.ConfigurationPropertySources.get(environment)
+                                            --> MutablePropertySources sources = ((ConfigurableEnvironment) environment).getPropertySources();
+                                            --> ConfigurationPropertySourcesPropertySource attached = (ConfigurationPropertySourcesPropertySource) sources.get("configurationProperties");
+                                            --> return attached.getSource();
+
+                                    --> PlaceholdersResolver placeholdersResolver = new PropertySourcesPlaceholdersResolver(environment);
+                                        --> org.springframework.boot.context.properties.bind.PropertySourcesPlaceholdersResolver
+                                            --> this(getSources(environment), null);
+                                                --> this.sources = sources;
+                                                --> this.helper = new PropertyPlaceholderHelper("${","}",":", true);
+                                                    --> org.springframework.util.PropertyPlaceholderHelper.PropertyPlaceholderHelper(java.lang.String, java.lang.String, java.lang.String, boolean)
+                                                        --> this.placeholderPrefix = placeholderPrefix; // ${
+                                                        --> this.placeholderSuffix = placeholderSuffix; //}
+                                                        --> String simplePrefixForSuffix = wellKnownSimplePrefixes.get(this.placeholderSuffix); //"{"
+                                                        --> this.simplePrefix = simplePrefixForSuffix;
+                                                        --> this.valueSeparator = valueSeparator; //:
+                                                        --> this.ignoreUnresolvablePlaceholders = ignoreUnresolvablePlaceholders; //true
+
+                                    --> return new Binder(configurationPropertySources,placeholdersResolver);
+                                        --> org.springframework.boot.context.properties.bind.Binder.Binder(java.lang.Iterable<org.springframework.boot.context.properties.source.ConfigurationPropertySource>, org.springframework.boot.context.properties.bind.PlaceholdersResolver)
+                                            --> this(sources, placeholdersResolver, null, null);
+                                                --> this.sources = sources; //SpringConfigurationPropertySources
+                                                --> this.placeholdersResolver = placeholdersResolver; //PropertySourcesPlaceholdersResolver
+                                                --> this.conversionService = ApplicationConversionService.getSharedInstance();
+                                                        //这一步在之前已经初始化过了，就是设置一堆converter的那个地方
+                                                    --> ApplicationConversionService sharedInstance = ApplicationConversionService.sharedInstance;
+                                                    --> return sharedInstance;
+                                                --> this.propertyEditorInitializer = propertyEditorInitializer; // null
+
+                            --> Bindable target = Bindable.ofInstance(this) //this 就是上面的SpringApplication.class的实例对象
+                                --> Class<T> type = (Class<T>) instance.getClass();
+                                --> Bindable bindable = of(type)
+                                    --> org.springframework.boot.context.properties.bind.Bindable.of(org.springframework.core.ResolvableType)
+                                        --> return of(ResolvableType.forClass(type));
+                                            --> return new ResolvableType(clazz);
+                                                --> this.resolved = (clazz != null ? clazz : Object.class);
+                                                    this.type = this.resolved;
+                                                    this.typeProvider = null;
+                                                    this.variableResolver = null;
+                                                    this.componentType = null;
+                                                    this.hash = null;
+                                            --> ResolvableType boxedType = box(type);
+                                                --> Class<?> resolved = type.resolve();
+                                                --> return type; // org.springframework.boot.SpringApplication
+
+                                            --> return new Bindable<>(type, boxedType, null, NO_ANNOTATIONS);
+                                                --> org.springframework.boot.context.properties.bind.Bindable.Bindable
+                                                    --> this.type = type; //org.springframework.boot.SpringApplication
+                                                        this.boxedType = boxedType; //org.springframework.boot.SpringApplication
+                                                        this.value = value; // null
+                                                        this.annotations = annotations; //{}
+
+                                --> return bindable.withExistingValue(instance);
+                                    --> Supplier<T> value = (existingValue != null) ? () -> existingValue : null; // 就是instance
+                                    --> return new Bindable<>(this.type, this.boxedType, value, NO_ANNOTATIONS);
+                                        --> this.type = type; // org.springframework.boot.SpringApplication
+                                            this.boxedType = boxedType; // org.springframework.boot.SpringApplication
+                                            this.value = value; //
+                                            this.annotations = annotations; // {}
+
+
+                            --> binder.bind("spring.main", target);
+                                --> org.springframework.boot.context.properties.bind.Binder.bind(java.lang.String, org.springframework.boot.context.properties.bind.Bindable<T>)
+                                    --> ConfigurationPropertyName configurationPropertyName = ConfigurationPropertyName.of(name);
+                                        --> org.springframework.boot.context.properties.source.ConfigurationPropertyName.of(java.lang.CharSequence)
+                                            --> Elements elements = new ElementsParser(name, '.').parse();
+                                            --> return new ConfigurationPropertyName(elements);
+                                                --> this.elements = elements;
+                                                    this.uniformElements = new CharSequence[elements.getSize()];
+
+                                    --> return bind(configurationPropertyName, target, null);
+                                        --> handler = (handler != null) ? handler : new BindHandler();
+
+                                        --> Context context = new org.springframework.boot.context.properties.bind.Binder.Context();
+                                        --> T bound = bind(name, target, handler, context, false);
+                                            --> target = handler.onStart(name, target, context);
+                                                --> return target;
+                                            --> Object bound = bindObject(name, target, handler, context,allowRecursiveBinding);
+                                                --> ConfigurationProperty property = findProperty(name, context);
+                                                    --> ConfigurationProperty property = source.getConfigurationProperty(name);
+                                                    --> return null;
+
+                                                --> AggregateBinder<?> aggregateBinder = getAggregateBinder(target, context);
+                                                    --> Class<?> resolvedType = target.getType().resolve(Object.class); // class org.springframework.boot.SpringApplication
+                                                    --> return null;
+
+                                                --> return bindBean(name, target, handler, context, allowRecursiveBinding);
+                                                    --> BeanPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName), propertyTarget, handler, context, false);
+
+                                                    --> Class<?> type = target.getType().resolve(Object.class); // class org.springframework.boot.SpringApplication
+
+                                                    --> return context.withBean(type, () -> {
+                                                        			Stream<?> boundBeans = BEAN_BINDERS.stream()
+                                                        					.map((b) -> b.bind(name, target, context, propertyBinder));
+                                                        			return boundBeans.filter(Objects::nonNull).findFirst().orElse(null);
+                                                        		});
+                                                        --> return withIncreasedDepth(supplier);
+                                                            --> return supplier.get();
+
+                                                        --> org.springframework.boot.context.properties.bind.JavaBeanBinder.bind(org.springframework.boot.context.properties.source.ConfigurationPropertyName, org.springframework.boot.context.properties.bind.Bindable<T>, org.springframework.boot.context.properties.bind.Binder.Context, org.springframework.boot.context.properties.bind.BeanPropertyBinder)
+                                                            --> boolean hasKnownBindableProperties = hasKnownBindableProperties(name, context); // true
+                                                            --> Bean<T> bean = Bean.get(target, hasKnownBindableProperties);
+                                                                --> Class<?> type = bindable.getType().resolve(Object.class); // class org.springframework.boot.SpringApplication
+                                                                --> type = (instance != null) ? instance.getClass() : type;
+                                                                --> Bean<?> bean = new Bean<>(bindable.getType(), type);
+                                                                    --> org.springframework.boot.context.properties.bind.JavaBeanBinder.Bean.Bean
+                                                                        --> this.resolvableType = resolvableType;
+                                                                        --> this.type = type;
+                                                                        --> putProperties(type); // class org.springframework.boot.SpringApplication
+                                                                                // type 里面包含很多方法，
+                                                                            --> for (Method method : type.getDeclaredMethods())
+                                                                                --> boolean isCandidate = isCandidate(method)
+                                                                                    --> return Modifier.isPublic(modifiers)
+                                                                                                && !Modifier.isAbstract(modifiers)
+                                                                                                && !Modifier.isStatic(modifiers)
+                                                                                                && !Object.class.equals(method.getDeclaringClass())
+                                                                                                && !Class.class.equals(method.getDeclaringClass());
+
+                                                                                --> if (isCandidate)
+                                                                                    --> addMethod(method); //public java.lang.ClassLoader org.springframework.boot.SpringApplication.getClassLoader()
+                                                                                        --> addMethodIfPossible(method, "get", 0, BeanProperty::addGetter);
+                                                                                            --> String propertyName = Introspector.decapitalize(method.getName().substring(prefix.length()));
+                                                                                            --> consumer.accept(this.properties.computeIfAbsent(propertyName, this::getBeanProperty), method);
+                                                                                                --> return new BeanProperty(name, this.resolvableType);
+                                                                                                    --> this.name = BeanPropertyName.toDashedForm(name); // name = classLoader, 方法完成之后变成了class-loader
+                                                                                                        this.declaringClassType = declaringClassType;
+
+                                                                                        --> addMethodIfPossible(method, "is", 0, BeanProperty::addGetter);
+                                                                                        --> addMethodIfPossible(method, "set", 1, BeanProperty::addSetter);
+
+                                                                                    --> addField(field);
+                                                                                        --> BeanProperty property = this.properties.get(field.getName());
+                                                                                        --> property.addField(field);
+
+                                                                --> return (Bean<T>) bean;
+
+                                                            --> BeanSupplier<T> beanSupplier = bean.getSupplier(target); // JavaBeanBinder$BeanSupplier
+
+                                                            --> boolean bound = bind(propertyBinder, bean, beanSupplier);
+                                                                --> String propertyName = property.getName(); // class-loader
+                                                                --> ResolvableType type = property.getType(); // java.lang.ClassLoader
+                                                                --> Object bound = propertyBinder.bindProperty(propertyName,Bindable.of(type).withSuppliedValue(value).withAnnotations(annotations));
+
+                                                                --> return true;
+
+                                                            --> return (bound ? beanSupplier.get() : null);
+
+                                            --> return handleBindResult(name, target, handler, context, bound);
+                                                --> result = handler.onSuccess(name, target, context, result);
+                                                    --> return result;
+                                                --> BindConverter bindConverter = context.getConverter()
+                                                --> result = bindConverter.convert(result, target);
+                                                    --> return convert(result, target.getType(), target.getAnnotations());
+                                                        --> return (T) this.conversionService.convert(value, TypeDescriptor.forObject(value),new ResolvableTypeDescriptor(type, annotations));
+                                                            --> return delegate.convert(source, sourceType, targetType);
+                                                                --> GenericConverter converter = getConverter(sourceType, targetType);
+                                                                    --> ConverterCacheKey key = new ConverterCacheKey(sourceType, targetType);
+                                                                    --> GenericConverter converter = this.converterCache.get(key);
+                                                                    --> return converter
+
+                                                                --> Object result = ConversionUtils.invokeConverter(converter, source, sourceType, targetType);
+                                                                    --> return converter.convert(source, sourceType, targetType);
+                                                                        --> return source;
+
+                                                                --> return handleResult(sourceType, targetType, result);
+                                                                    --> return result;
+
+                                                --> handler.onFinish(name, target, context, result);
+
+                                                --> BindConverter bindConverter = context.getConverter()
+
+                                                --> return bindConverter.convert(result, target);
+                                                    --> return convert(result, target.getType(), target.getAnnotations());
+                                                        --> return (T) this.conversionService.convert(value, TypeDescriptor.forObject(value),new ResolvableTypeDescriptor(type, annotations));
+                                                            .
+                                                            .
+                                                            .
+                                                            //解析过程和上面相同
+
+                                        --> return BindResult.of(bound);
+                                            --> return new BindResult<>(value);
+                                                --> org.springframework.boot.context.properties.bind.BindResult.BindResult
+                                                    --> this.value = value;
 
                         --> ConfigurationPropertySources.attach(environment);
+                            --> MutablePropertySources sources = ((ConfigurableEnvironment) environment).getPropertySources();
+                            --> PropertySource<?> attached = sources.get("configurationProperties");
+                            --> sources.remove("configurationProperties");
+                            --> attached = null;
+
+                            --> SpringConfigurationPropertySources springConfigurationPropertySources = new SpringConfigurationPropertySources(sources)
+                                --> this.sources = sources;
+                            --> ConfigurationPropertySourcesPropertySource configurationPropertySourcesPropertySource = new ConfigurationPropertySourcesPropertySource("configurationProperties",springConfigurationPropertySources);
+                                --> this.name = name;
+                                    this.source = source;
+                            --> sources.addFirst(configurationPropertySourcesPropertySource);
+                                --> this.propertySourceList.add(0, propertySource);
 
                         --> return environment;
 
-
+                        //遍历调用所有SpringApplicationRunListener的environmentPrepared()的方法，告诉他们：“当前SpringBoot应用使用的Environment准备好了咯！”
                     --> configureIgnoreBeanInfo(environment);
+                        --> Boolean ignore = environment.getProperty("spring.beaninfo.ignore",Boolean.class, Boolean.TRUE);
+                        --> System.setProperty(CachedIntrospectionResults.IGNORE_BEANINFO_PROPERTY_NAME,ignore.toString());
+
+                        //如果SpringApplication的showBanner属性被设置为true，则打印banner。
                     --> Banner printedBanner = printBanner(environment);
+
+                        //根据用户是否明确设置了applicationContextClass类型以及初始化阶段的推断结果，决定该为当前SpringBoot应用创建什么类型的ApplicationContext并创建完成，然后根据条件决定是否添加ShutdownHook，决定是否使用自定义的BeanNameGenerator，决定是否使用自定义的ResourceLoader，当然，最重要的，将之前准备好的Environment设置给创建好的ApplicationContext使用
+                        // ApplicationContext创建好之后，SpringApplication会再次借助Spring-FactoriesLoader，查找并加载classpath中所有可用的ApplicationContext-Initializer，然后遍历调用这些ApplicationContextInitializer的initialize（applicationContext）方法来对已经创建好的ApplicationContext进行进一步的处理。
                     --> context = createApplicationContext();
+                        --> Class<?> contextClass = this.applicationContextClass;
+                        --> contextClass = Class.forName(DEFAULT_CONTEXT_CLASS); //org.springframework.context.annotation.AnnotationConfigApplicationContext
+                        --> return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
+                            --> return instantiateClass(clazz.getDeclaredConstructor());
+                                --> return ctor.newInstance(args)
+
+                        //遍历调用所有SpringApplicationRunListener的contextPrepared()方法。
+                        //最核心的一步，将之前通过@EnableAutoConfiguration获取的所有配置以及其他形式的IoC容器配置加载到已经准备完毕的ApplicationContext。
                     --> prepareContext(context, environment, listeners, applicationArguments,printedBanner);
+                        --> context.setEnvironment(environment);
+                            --> org.springframework.context.annotation.AnnotationConfigApplicationContext.setEnvironment
+                                --> super.setEnvironment(environment);
+                                    --> org.springframework.context.support.AbstractApplicationContext.setEnvironment
+                                        --> this.environment = environment;
+                                --> this.reader.setEnvironment(environment);
+                                    --> org.springframework.context.annotation.AnnotatedBeanDefinitionReader.setEnvironment(Environment environment)
+                                        --> this.conditionEvaluator = new ConditionEvaluator(this.registry, environment, null);
+                                            --> this.context = new ConditionContextImpl(registry, environment, resourceLoader);
+                                                --> org.springframework.context.annotation.ConditionEvaluator.ConditionContextImpl.ConditionContextImpl
+                                                    --> this.registry = registry;
+                                                    --> this.beanFactory = deduceBeanFactory(registry);
+                                                        --> return (((ConfigurableApplicationContext) source).getBeanFactory());
+                                                    --> this.environment = (environment != null ? environment : deduceEnvironment(registry));
+                                                        --> return new StandardEnvironment();
+                                                                //这一步将系统默认的参数添加到了propertySources中
+                                                            --> propertySources.addLast(new MapPropertySource("systemProperties", getSystemProperties()));
+                                                                propertySources.addLast(new SystemEnvironmentPropertySource("systemEnvironment", getSystemEnvironment()));
+
+                                                    --> this.resourceLoader = (resourceLoader != null ? resourceLoader : deduceResourceLoader(registry));
+                                                        --> org.springframework.context.annotation.ConditionEvaluator.ConditionContextImpl.deduceResourceLoader(BeanDefinitionRegistry source)
+                                                            --> return (ResourceLoader) source;
+
+                                                    --> this.classLoader = deduceClassLoader(resourceLoader, this.beanFactory);
+                                                        --> return beanFactory.getBeanClassLoader();
+
+                                --> this.scanner.setEnvironment(environment);
+                                    --> org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider.setEnvironment(Environment environment)
+                                        --> this.environment = environment;
+                                        --> this.conditionEvaluator = null;
+
+                            //看样子像是把容器再检查一遍，该有的都有了之后才去启动容器
+                        --> postProcessApplicationContext(context);
+                            --> ConversionService conversionService = ApplicationConversionService.getSharedInstance()
+                                    //之前这个实例被初始化过了，这里直接返回即可
+                                --> return sharedInstance;
+
+                            --> context.getBeanFactory().setConversionService(conversionService);
+                                --> org.springframework.beans.factory.support.AbstractBeanFactory.setConversionService(ConversionService conversionService)
+                                    --> this.conversionService = conversionService;
+
+                        --> applyInitializers(context);
+                            --> org.springframework.boot.SpringApplication.applyInitializers(ConfigurableApplicationContext context)
+                                --> Set<ApplicationContextInitializer<?>> set = getInitializers()   // 这里获取的就是上面从spring.factories获取的那几个Initializer
+                                --> for (ApplicationContextInitializer initializer : set)
+                                    --> Class<?> requiredType = GenericTypeResolver.resolveTypeArgument(initializer.getClass(), ApplicationContextInitializer.class);
+                                        --> ResolvableType resolvableType = ResolvableType.forClass(clazz).as(genericIfc);
+                                        --> return getSingleGeneric(resolvableType);
+                                            --> return resolvableType.getGeneric().resolve(); //
+
+                                        //1.DelegatingApplicationContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered .initialize(context)
+                                    --> org.springframework.boot.context.config.DelegatingApplicationContextInitializer.initialize(context)
+                                        --> ConfigurableEnvironment environment = context.getEnvironment();
+                                        --> List<Class<?>> initializerClasses = getInitializerClasses(environment);
+                                            --> String classNames = env.getProperty("context.initializer.classes"); //null
+                                            --> return classes; // emptyList
+
+                                        //2.SharedMetadataReaderFactoryContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered .initialize(context)
+                                    --> org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer.initialize(context)
+                                        --> BeanFactoryPostProcessor postProcessor = new CachingMetadataReaderFactoryPostProcessor()
+                                        --> applicationContext.addBeanFactoryPostProcessor(postProcessor);
+                                            --> AbstractApplicationContext.beanFactoryPostProcessors.add(postProcessor);
+
+                                        //3.ContextIdApplicationContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered .initialize(context)
+                                    --> org.springframework.boot.context.ContextIdApplicationContextInitializer.initialize(context)
+                                        --> ContextId contextId = getContextId(applicationContext);
+                                            --> ApplicationContext parent = applicationContext.getParent();
+                                            --> String applicationId = getApplicationId(applicationContext.getEnvironment());
+                                                --> String name = environment.getProperty("spring.application.name");
+                                                --> return StringUtils.hasText(name) ? name : "application";
+                                            --> return new ContextId(applicationId);
+                                                --> org.springframework.boot.context.ContextIdApplicationContextInitializer.ContextId(String id)
+                                                    --> this.id = id;
+
+                                        --> applicationContext.setId(contextId.getId());
+                                        --> ConfigurableListableBeanFactory configurableListableBeanFactory = applicationContext.getBeanFactory()
+                                            --> return this.beanFactory;
+                                        --> configurableListableBeanFactory.registerSingleton(ContextId.class.getName(),contextId);
+                                            --> super.registerSingleton(beanName, singletonObject); // beanName = org.springframework.boot.context.ContextIdApplicationContextInitializer$ContextId
+                                                --> org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.registerSingleton(String beanName, Object singletonObject)
+                                                    --> addSingleton(beanName, singletonObject);
+                                                        --> this.singletonObjects.put(beanName, singletonObject);
+                                                            this.singletonFactories.remove(beanName);
+                                                            this.earlySingletonObjects.remove(beanName);
+                                                            this.registeredSingletons.add(beanName);
+
+                                            --> this.manualSingletonNames.add(beanName);
+
+                                        // 4.ConfigurationWarningsApplicationContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> .initialize
+                                    --> org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer.initialize
+                                        --> Check[] checks = getChecks()
+                                            --> return new Check[] { new ComponentScanPackageCheck() };
+                                                    //添加基础包扫描吧
+                                                --> Set<String> packages = new HashSet<>();
+                                                    packages.add("org.springframework");
+                                                    packages.add("org");
+
+                                        --> ConfigurationWarningsPostProcessor configurationWarningsPostProcessor = new ConfigurationWarningsPostProcessor(checks)
+                                            --> org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer.ConfigurationWarningsPostProcessor(Check[] checks)
+                                                --> this.checks = checks;
+                                        --> context.addBeanFactoryPostProcessor(configurationWarningsPostProcessor);
+                                            --> AbstractApplicationContext.beanFactoryPostProcessors.add(postProcessor);
+
+                                        // 5. ServerPortInfoApplicationContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext>,ApplicationListener<WebServerInitializedEvent>
+                                    --> org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer.initialize
+                                        --> applicationContext.addApplicationListener(this);
+                                            --> AbstractApplicationContext.applicationListeners.add(listener);
+
+                                        // 6. ConditionEvaluationReportLoggingListener implements ApplicationContextInitializer<ConfigurableApplicationContext>
+                                    --> org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener.initialize
+                                        --> this.applicationContext = applicationContext;
+                                        --> applicationContext.addApplicationListener(new ConditionEvaluationReportListener());
+                                        --> this.report = ConditionEvaluationReport.get(this.applicationContext.getBeanFactory());
+
+                        --> listeners.contextPrepared(context);
+                            --> for (SpringApplicationRunListener listener : this.listeners) //现在里面就一个 eventPublishingRunListener
+                                --> org.springframework.boot.context.event.EventPublishingRunListener.contextPrepared(context)
+                                    --> ApplicationContextInitializedEvent applicationContextInitializedEvent = new ApplicationContextInitializedEvent(this.application, this.args, context)
+                                        --> super(application, args);
+                                            --> org.springframework.boot.context.event.SpringApplicationEvent
+                                                --> super(application);
+                                                    --> org.springframework.context.ApplicationEvent.ApplicationEvent
+                                                        --> super(source);
+                                                            --> java.util.EventObject.EventObject
+                                                                --> this.source = source;
+                                                --> this.args = args;
+                                        --> this.context = context;
+                                    --> this.initialMulticaster.multicastEvent(applicationContextInitializedEvent);
+                                        --> org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(org.springframework.context.ApplicationEvent)
+                                            --> ResolvableType resolvableType = resolveDefaultEventType(event)
+                                                --> return ResolvableType.forInstance(event);
+                                                    --> return ResolvableType.forClass(instance.getClass());
+
+                                            --> multicastEvent(event, resolvableType);
+                                                --> ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
+                                                --> ApplicationListener listeners = getApplicationListeners(event, type)
+                                                --> for (final ApplicationListener<?> listener : listeners)
+                                                    .
+                                                    .
+                                                    .//执行和之前的步骤相同
+
+                        --> ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+                            --> org.springframework.context.support.GenericApplicationContext.getBeanFactory
+                                --> return this.beanFactory; // DefaultListableBeanFactory
+
+                        --> beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
+                            --> org.springframework.beans.factory.support.DefaultListableBeanFactory.registerSingleton
+                                --> super.registerSingleton(beanName, singletonObject);
+                                    --> addSingleton(beanName, singletonObject);
+                                        --> this.singletonObjects.put(beanName, singletonObject);
+                                            this.singletonFactories.remove(beanName);
+                                            this.earlySingletonObjects.remove(beanName);
+                                            this.registeredSingletons.add(beanName);
+                                --> this.manualSingletonNames.add(beanName);
+
+                        --> beanFactory.registerSingleton("springBootBanner", printedBanner);
+
+                        --> if (beanFactory instanceof DefaultListableBeanFactory)
+                            --> ((DefaultListableBeanFactory) beanFactory).setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding); // false
+
+                            // Load the sources
+                        --> Set<Object> sources = getAllSources();
+                            --> org.springframework.boot.SpringApplication.getAllSources
+                                --> Set<Object> allSources = new LinkedHashSet<>();
+                                    // 这个类是导入的入口
+                                --> allSources.addAll(this.primarySources); // 现在里面有一个class org.springframework.cloud.bootstrap.BootstrapImportSelectorConfiguration
+                                --> return Collections.unmodifiableSet(allSources);
+
+                        --> load(context, sources.toArray(new Object[0]));
+                            --> org.springframework.boot.SpringApplication.load
+                                --> BeanDefinitionRegistry beanDefinitionRegistry= getBeanDefinitionRegistry(context)
+                                    --> return (BeanDefinitionRegistry) context;
+                                --> BeanDefinitionLoader loader = createBeanDefinitionLoader(beanDefinitionRegistry, sources);
+                                    --> return new BeanDefinitionLoader(registry, sources);
+                                        --> org.springframework.boot.BeanDefinitionLoader.BeanDefinitionLoader
+
+                                            --> this.sources = sources; //class org.springframework.cloud.bootstrap.BootstrapImportSelectorConfiguration
+
+                                            --> this.annotatedReader = new AnnotatedBeanDefinitionReader(registry);
+                                                --> org.springframework.context.annotation.AnnotatedBeanDefinitionReader.AnnotatedBeanDefinitionReader(org.springframework.beans.factory.support.BeanDefinitionRegistry)
+                                                    --> Environment environment = getOrCreateEnvironment(registry)
+                                                            //这一步在之前初始化过了，直接获取即可
+                                                        --> return ((EnvironmentCapable) registry).getEnvironment();
+                                                    --> this(registry, environment);
+                                                        --> this.registry = registry; // org.springframework.context.annotation.AnnotationConfigApplicationContext
+                                                        --> this.conditionEvaluator = new ConditionEvaluator(registry, environment, null);
+                                                            --> this.context = new ConditionContextImpl(registry, environment, resourceLoader);
+                                                                --> this.registry = registry;
+                                                                --> this.beanFactory = deduceBeanFactory(registry);
+                                                                --> this.environment = (environment != null ? environment : deduceEnvironment(registry));
+                                                                --> this.resourceLoader = (resourceLoader != null ? resourceLoader : deduceResourceLoader(registry));
+                                                                --> this.classLoader = deduceClassLoader(resourceLoader, this.beanFactory);
+                                                                .
+                                                                .
+                                                                .//和上面的代码步骤相同
+
+                                                        --> AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
+                                                            --> org.springframework.context.annotation.AnnotationConfigUtils.registerAnnotationConfigProcessors(org.springframework.beans.factory.support.BeanDefinitionRegistry)
+                                                                --> registerAnnotationConfigProcessors(registry, null);
+                                                                    --> DefaultListableBeanFactory beanFactory = unwrapDefaultListableBeanFactory(registry);
+                                                                        --> return ((GenericApplicationContext) registry).getDefaultListableBeanFactory();
+                                                                            --> org.springframework.context.support.GenericApplicationContext.getDefaultListableBeanFactory
+                                                                                --> return this.beanFactory;  //org.springframework.beans.factory.support.DefaultListableBeanFactory@21ba0741: defining beans [org.springframework.context.annotation.internalConfigurationAnnotationProcessor,org.springframework.context.annotation.internalAutowiredAnnotationProcessor,org.springframework.context.annotation.internalCommonAnnotationProcessor,org.springframework.context.event.internalEventListenerProcessor,org.springframework.context.event.internalEventListenerFactory]; root of factory hierarchy
+
+                                                                    --> Set<BeanDefinitionHolder> beanDefs = new LinkedHashSet<>(8);
+                                                                    --> if (!registry.containsBeanDefinition("org.springframework.context.annotation.internalConfigurationAnnotationProcessor"))
+                                                                        --> RootBeanDefinition def = new RootBeanDefinition(ConfigurationClassPostProcessor.class);
+                                                                            --> org.springframework.beans.factory.support.RootBeanDefinition.RootBeanDefinition(java.lang.Class<?>)
+                                                                                --> super();
+                                                                                    --> org.springframework.beans.factory.support.AbstractBeanDefinition.AbstractBeanDefinition()
+                                                                                        --> this.constructorArgumentValues = null;
+                                                                                        --> this.propertyValues = null;
+                                                                                --> setBeanClass(beanClass);
+                                                                                    --> this.beanClass = beanClass;
+
+                                                                        --> def.setSource(source);
+                                                                        --> BeanDefinitionHolder beanDefinitionHolder = registerPostProcessor(registry, def, "org.springframework.context.annotation.internalConfigurationAnnotationProcessor")
+                                                                                //Set the role hint for this {@code BeanDefinition}.
+                                                                            --> definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+
+                                                                            --> registry.registerBeanDefinition(beanName, definition);
+                                                                                --> org.springframework.context.support.GenericApplicationContext.registerBeanDefinition
+                                                                                    --> this.beanFactory.registerBeanDefinition(beanName, beanDefinition);
+                                                                                        --> org.springframework.beans.factory.support.DefaultListableBeanFactory.registerBeanDefinition
+                                                                                            --> BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
+                                                                                            --> this.beanDefinitionMap.put(beanName, beanDefinition);
+                                                                                            --> this.beanDefinitionNames.add(beanName);
+                                                                                            --> this.manualSingletonNames.remove(beanName);
+                                                                                            --> this.frozenBeanDefinitionNames = null;
+
+                                                                            --> return new BeanDefinitionHolder(definition, beanName); // beanName = org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+                                                                                --> org.springframework.beans.factory.config.BeanDefinitionHolder.BeanDefinitionHolder(org.springframework.beans.factory.config.BeanDefinition, java.lang.String)
+                                                                                    --> this.beanDefinition = beanDefinition;
+                                                                                    --> this.beanName = beanName;
+                                                                                    --> this.aliases = null;
+
+                                                                        --> beanDefs.add(beanDefinitionHolder);
+
+                                                                        // 根据registry中是否包含bean，如果不包含就进行初始化，规则和上面一样
+                                                                    --> if (!registry.containsBeanDefinition("org.springframework.context.annotation.internalAutowiredAnnotationProcessor"))
+                                                                    --> if (jsr250Present && !registry.containsBeanDefinition("org.springframework.context.annotation.internalCommonAnnotationProcessor"))
+                                                                    --> if (jpaPresent && !registry.containsBeanDefinition("org.springframework.context.annotation.internalCommonAnnotationProcessor"))
+                                                                        --> RootBeanDefinition def = new RootBeanDefinition();
+                                                                        --> def.setBeanClass(ClassUtils.forName("org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor",AnnotationConfigUtils.class.getClassLoader()));
+                                                                    --> if (!registry.containsBeanDefinition("org.springframework.context.event.internalEventListenerProcessor"))
+                                                                    --> if (!registry.containsBeanDefinition("org.springframework.context.event.internalEventListenerFactory"))
+
+                                                                    --> return beanDefs;
+
+                                            --> this.xmlReader = new XmlBeanDefinitionReader(registry);
+                                                --> org.springframework.beans.factory.xml.XmlBeanDefinitionReader.XmlBeanDefinitionReader
+                                                    --> super()
+                                                        --> org.springframework.beans.factory.support.AbstractBeanDefinitionReader.AbstractBeanDefinitionReader
+                                                            --> this.registry = registry;
+                                                            --> this.resourceLoader = (ResourceLoader) this.registry;
+                                                            --> this.environment = ((EnvironmentCapable) this.registry).getEnvironment();
+
+                                                //加载classpath下面的bean
+                                            --> this.scanner = new ClassPathBeanDefinitionScanner(registry);
+                                                --> org.springframework.context.annotation.ClassPathBeanDefinitionScanner.ClassPathBeanDefinitionScanner(org.springframework.beans.factory.support.BeanDefinitionRegistry)
+                                                    --> this(registry, useDefaultFilters, getOrCreateEnvironment(registry));
+                                                        --> this(registry, useDefaultFilters, environment,(registry instanceof ResourceLoader ? (ResourceLoader) registry : null));
+                                                            --> this.registry = registry;
+
+                                                                //注册一些默认的filters
+                                                            --> registerDefaultFilters();
+                                                                    //Register the default filter for {@link Component @Component}.
+                                                                --> this.includeFilters.add(new AnnotationTypeFilter(Component.class));
+                                                                    --> org.springframework.core.type.filter.AnnotationTypeFilter.AnnotationTypeFilter(java.lang.Class<? extends java.lang.annotation.Annotation>)
+                                                                        --> this(annotationType, true, false);
+                                                                            --> super(annotationType.isAnnotationPresent(Inherited.class), considerInterfaces);
+                                                                                --> org.springframework.core.type.filter.AbstractTypeHierarchyTraversingFilter.AbstractTypeHierarchyTraversingFilter
+                                                                                    --> this.considerInherited = considerInherited; // false
+                                                                                    --> this.considerInterfaces = considerInterfaces; // false
+                                                                            --> this.annotationType = annotationType; // interface org.springframework.stereotype.Component
+                                                                            --> this.considerMetaAnnotations = considerMetaAnnotations; // true
+
+                                                                --> ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
+                                                                --> this.includeFilters.add(new AnnotationTypeFilter(((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
+                                                                --> this.includeFilters.add(new AnnotationTypeFilter(((Class<? extends Annotation>) ClassUtils.forName("javax.inject.Named", cl)), false));
+
+                                                            --> setEnvironment(environment);
+                                                                --> org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider.setEnvironment(Environment environment)
+                                                                    --> this.environment = environment;
+                                                                    --> this.conditionEvaluator = null;
+
+                                                            --> setResourceLoader(resourceLoader);
+                                                                --> org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider.setResourceLoader(ResourceLoader resourceLoader)
+                                                                    --> this.resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver(resourceLoader);
+                                                                        --> return (ResourcePatternResolver) resourceLoader;
+                                                                    --> this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
+                                                                        --> org.springframework.core.type.classreading.CachingMetadataReaderFactory.CachingMetadataReaderFactory(org.springframework.core.io.ResourceLoader)
+                                                                            --> super(resourceLoader);
+                                                                                --> org.springframework.core.type.classreading.SimpleMetadataReaderFactory.SimpleMetadataReaderFactory(org.springframework.core.io.ResourceLoader)
+                                                                                    --> this.resourceLoader = (resourceLoader != null ? resourceLoader : new DefaultResourceLoader());
+                                                                            --> this.metadataReaderCache = ((DefaultResourceLoader) resourceLoader).getResourceCache(MetadataReader.class);
+
+                                                                    --> this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
+                                                                        --> org.springframework.context.index.CandidateComponentsIndex
+                                                                            --> ClassLoader classLoaderToUse = classLoader;
+                                                                            --> return cache.computeIfAbsent(classLoaderToUse, CandidateComponentsIndexLoader::doLoadIndex);
+                                                                                --> Enumeration<URL> urls = classLoader.getResources("META-INF/spring.components");
+                                                                                --> URL url = urls.nextElement();
+                                                                                --> Properties properties = PropertiesLoaderUtils.loadProperties(new UrlResource(url));
+                                                                                --> result.add(properties);
+
+                                            --> this.scanner.addExcludeFilter(new ClassExcludeFilter(sources));
+                                                --> org.springframework.boot.BeanDefinitionLoader.ClassExcludeFilter.ClassExcludeFilter
+                                                    --> super(false, false);
+                                                        --> this.considerInherited = considerInherited; // false
+                                                        --> this.considerInterfaces = considerInterfaces; // false
+
+                                                        //要把之前的类排除出去
+                                                    --> this.classNames.add(((Class<?>) source).getName()); // org.springframework.cloud.bootstrap.BootstrapImportSelectorConfiguration
+
+                                --> loader.setEnvironment(this.environment);
+                                    --> org.springframework.boot.BeanDefinitionLoader.setEnvironment
+                                        --> this.annotatedReader.setEnvironment(environment);
+                                        --> this.xmlReader.setEnvironment(environment);
+                                        --> this.scanner.setEnvironment(environment);
+
+                                --> loader.load();
+                                    --> if (isComponent(source))
+                                        --> if (AnnotationUtils.findAnnotation(type, Component.class) != null)
+                                        --> this.annotatedReader.register(source); // source = class org.springframework.cloud.bootstrap.BootstrapImportSelectorConfiguration
+                                            --> registerBean(annotatedClass);
+                                                    //Register a bean from the given bean class, deriving its metadata from class-declared annotations.
+                                                --> doRegisterBean(annotatedClass, null, null, null);
+                                                    --> AnnotatedGenericBeanDefinition abd = new AnnotatedGenericBeanDefinition(annotatedClass);
+                                                        --> org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition.AnnotatedGenericBeanDefinition(java.lang.Class<?>)
+                                                            --> setBeanClass(beanClass);
+                                                                --> org.springframework.beans.factory.support.AbstractBeanDefinition.setBeanClass
+                                                                    --> this.beanClass = beanClass;
+
+                                                            --> this.metadata = new StandardAnnotationMetadata(beanClass, true);
+                                                                --> org.springframework.core.type.StandardAnnotationMetadata.StandardAnnotationMetadata(java.lang.Class<?>, boolean)
+                                                                    --> super(introspectedClass);
+                                                                        --> org.springframework.core.type.StandardClassMetadata.StandardClassMetadata
+                                                                            --> this.introspectedClass = introspectedClass;
+
+                                                                        //读取到了BootstrapImportSelectorConfiguration这个类上面的两个注解
+                                                                    --> this.annotations = introspectedClass.getAnnotations(); //[@org.springframework.context.annotation.Configuration(value=),@org.springframework.context.annotation.Import(value=[class org.springframework.cloud.bootstrap.BootstrapImportSelector])]
+                                                                        --> java.lang.Class.getAnnotations
+                                                                            --> return AnnotationParser.toArray(annotationData().annotations);
+
+                                                                    --> this.nestedAnnotationsAsMap = true;
+
+                                                    --> abd.setInstanceSupplier(instanceSupplier); // null
+
+                                                    --> ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(abd);
+                                                        --> org.springframework.context.annotation.AnnotationScopeMetadataResolver.resolveScopeMetadata(BeanDefinition definition)
+                                                            --> ScopeMetadata metadata = new ScopeMetadata();
+                                                            --> AnnotatedBeanDefinition annDef = (AnnotatedBeanDefinition) definition;
+                                                            --> AnnotationAttributes attributes = AnnotationConfigUtils.attributesFor(annDef.getMetadata(), this.scopeAnnotationType);
+                                                                --> org.springframework.context.annotation.AnnotationConfigUtils.attributesFor(org.springframework.core.type.AnnotatedTypeMetadata, java.lang.Class<?>)
+                                                                    --> return attributesFor(metadata, annotationClass.getName());
+                                                                        --> Map<String, Object> metadataMap = metadata.getAnnotationAttributes(annotationClassName, false)
+                                                                            --> return AnnotatedElementUtils.getMergedAnnotationAttributes(getIntrospectedClass(), annotationName, classValuesAsString, this.nestedAnnotationsAsMap)
+                                                                                --> Processor<T> processor = new MergedAnnotationAttributesProcessor(classValuesAsString, nestedAnnotationsAsMap)
+                                                                                    --> org.springframework.core.annotation.AnnotatedElementUtils.MergedAnnotationAttributesProcessor#MergedAnnotationAttributesProcessor(boolean, boolean)
+                                                                                        --> this.classValuesAsString = classValuesAsString; // false
+                                                                                        --> this.nestedAnnotationsAsMap = nestedAnnotationsAsMap; // true
+                                                                                        --> this.aggregates = aggregates; // false
+                                                                                        --> this.aggregatedResults = Collections.emptyList();
+
+                                                                                --> AnnotationAttributes attributes = searchWithGetSemantics(element, null, annotationName,processor);
+                                                                                    --> org.springframework.core.annotation.AnnotatedElementUtils.searchWithGetSemantics(java.lang.reflect.AnnotatedElement, java.lang.Class<? extends java.lang.annotation.Annotation>, java.lang.String, org.springframework.core.annotation.AnnotatedElementUtils.Processor<T>)
+                                                                                        --> return searchWithGetSemantics(element,Collections.emptySet(),annotationName, null, processor);
+                                                                                            --> return searchWithGetSemantics(element, annotationTypes, annotationName, containerType, processor,new HashSet<>(), 0);
+                                                                                                --> List<Annotation> declaredAnnotations = Arrays.asList(AnnotationUtils.getDeclaredAnnotations(element)); // [@org.springframework.context.annotation.Configuration(value=),@org.springframework.context.annotation.Import(value=[class org.springframework.cloud.bootstrap.BootstrapImportSelector])]
+                                                                                                --> T result = searchWithGetSemanticsInAnnotations(element, declaredAnnotations, annotationTypes, annotationName, containerType, processor, visited, metaDepth);
+                                                                                                    --> for (Annotation annotation : annotations)
+                                                                                                        --> Class<? extends Annotation> currentAnnotationType = annotation.annotationType();
+                                                                                                        --> T result = searchWithGetSemantics(currentAnnotationType, annotationTypes, annotationName, containerType, processor, visited, metaDepth + 1);
+                                                                                                            --> return null;
+                                                                                                --> Class<?> superclass = ((Class<?>) element).getSuperclass();
+                                                                                                --> return null;
+
+                                                                                --> AnnotationUtils.postProcessAnnotationAttributes(element, attributes, classValuesAsString, nestedAnnotationsAsMap);
+                                                                                    --> return null
+
+                                                                                --> return attributes; // null
+
+                                                                        --> return AnnotationAttributes.fromMap(metadataMap);
+                                                                            --> return null
+
+                                                            --> return metadata; // 没有进行操作，只有初始化的两个属性scopeName:singleton，scopedProxyMode:no
+
+                                                    --> abd.setScope(scopeMetadata.getScopeName()); // singleton
+
+                                                    --> String beanName = this.beanNameGenerator.generateBeanName(abd, this.registry);
+                                                        --> org.springframework.context.annotation.AnnotationBeanNameGenerator.generateBeanName
+                                                            --> String beanName = determineBeanNameFromAnnotation((AnnotatedBeanDefinition) definition);
+                                                                --> return null
+                                                            --> return buildDefaultBeanName(definition, registry);
+                                                                --> return buildDefaultBeanName(definition);
+                                                                    --> String beanClassName = definition.getBeanClassName(); // org.springframework.cloud.bootstrap.BootstrapImportSelectorConfiguration
+                                                                    --> String shortClassName = ClassUtils.getShortName(beanClassName); // BootstrapImportSelectorConfiguration
+                                                                        //将首字母变成小写
+                                                                    --> return Introspector.decapitalize(shortClassName); // bootstrapImportSelectorConfiguration
+
+                                                    --> AnnotationConfigUtils.processCommonDefinitionAnnotations(abd);
+                                                        --> org.springframework.context.annotation.AnnotationConfigUtils.processCommonDefinitionAnnotations(org.springframework.beans.factory.annotation.AnnotatedBeanDefinition)
+                                                            --> processCommonDefinitionAnnotations(abd, abd.getMetadata());
+                                                                --> AnnotationAttributes lazy = attributesFor(metadata, Lazy.class);
+                                                                --> if (metadata.isAnnotated(Primary.class.getName()))
+                                                                --> AnnotationAttributes dependsOn = attributesFor(metadata, DependsOn.class);
+                                                                --> AnnotationAttributes role = attributesFor(metadata, Role.class);
+                                                                --> AnnotationAttributes description = attributesFor(metadata, Description.class);
+
+                                                    --> BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(abd, beanName);
+                                                        --> org.springframework.beans.factory.config.BeanDefinitionHolder.BeanDefinitionHolder(org.springframework.beans.factory.config.BeanDefinition, java.lang.String)
+                                                            --> this.beanDefinition = beanDefinition;
+                                                            --> this.beanName = beanName; // bootstrapImportSelectorConfiguration
+                                                            --> this.aliases = aliases; // null
+
+                                                    --> definitionHolder = AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+                                                        --> org.springframework.context.annotation.AnnotationConfigUtils.applyScopedProxyMode(ScopeMetadata metadata, BeanDefinitionHolder definition, BeanDefinitionRegistry registry)
+                                                            --> ScopedProxyMode scopedProxyMode = metadata.getScopedProxyMode(); //no
+                                                            --> return definition;
+
+                                                    --> BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, this.registry);
+                                                        --> org.springframework.beans.factory.support.BeanDefinitionReaderUtils.registerBeanDefinition
+                                                            --> String beanName = definitionHolder.getBeanName(); // bootstrapImportSelectorConfiguration
+                                                            --> registry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition());
+                                                                --> org.springframework.context.support.GenericApplicationContext.registerBeanDefinition
+                                                                    --> this.beanFactory.registerBeanDefinition(beanName, beanDefinition);
+                                                                        --> BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
+                                                                        --> this.beanDefinitionMap.put(beanName, beanDefinition);
+                                                                        --> this.beanDefinitionNames.add(beanName);
+                                                                        --> this.manualSingletonNames.remove(beanName);
+                                                                        --> this.frozenBeanDefinitionNames = null;
+
+                            //遍历调用所有SpringApplicationRunListener的contextLoaded()方法。
+                        --> listeners.contextLoaded(context);
+                            --> for (SpringApplicationRunListener listener : this.listeners) // EventPublishingRunListener
+                                --> listener.contextLoaded(context);
+                                    --> org.springframework.boot.context.event.EventPublishingRunListener.contextLoaded
+                                        --> for (ApplicationListener<?> listener : this.application.getListeners())  // 13个listener
+                                                //实现了ApplicationContextAware接口的就在这一步注入context
+                                            --> if (listener instanceof ApplicationContextAware)
+                                                --> ((ApplicationContextAware) listener).setApplicationContext(context);
+                                            --> context.addApplicationListener(listener);
+                                            --> this.initialMulticaster.multicastEvent(new ApplicationPreparedEvent(this.application, this.args, context));
+
+
+                        //调用ApplicationContext的refresh()方法，完成IoC容器可用的最后一道工序。
                     --> refreshContext(context);
+                        -->
+
+                        //查找当前ApplicationContext中是否注册有CommandLineRunner，如果有，则遍历执行它们。
                     --> afterRefresh(context, applicationArguments);
                     --> if (this.logStartupInfo)
                         --> new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
