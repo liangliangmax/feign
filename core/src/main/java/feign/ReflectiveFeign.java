@@ -56,6 +56,7 @@ public class ReflectiveFeign extends Feign {
     Map<Method, MethodHandler> methodToHandler = new LinkedHashMap<Method, MethodHandler>();
     List<DefaultMethodHandler> defaultMethodHandlers = new LinkedList<DefaultMethodHandler>();
 
+    //这一步将方法类与方法实现进行了绑定
     for (Method method : target.type().getMethods()) {
       if (method.getDeclaringClass() == Object.class) {
         continue;
@@ -67,7 +68,11 @@ public class ReflectiveFeign extends Feign {
         methodToHandler.put(method, nameToHandler.get(Feign.configKey(target.type(), method)));
       }
     }
+
+    //这一步将HardCodedTarget(type=GitHub, url=https://api.github.com)类与这个接口中所有的方法及其方法时间传入到factory中，生成了个代理类
+    //每个接口都会生成一个HardCodedTarget的类，里面记录着请求地址等信息，这样就给每个接口生成了一个代理类
     InvocationHandler handler = factory.create(target, methodToHandler);
+
     //这里可以看到是使用了jdk自带的动态代理实现的
     //那么我们知道jdk动态代理真正执行的是InvocationHandler接口中的invoke方法，我们再跟踪invoke，看下执行目标接口方法时具体逻辑。
     T proxy = (T) Proxy.newProxyInstance(target.type().getClassLoader(),
@@ -108,6 +113,8 @@ public class ReflectiveFeign extends Feign {
         return toString();
       }
 
+      //动态代理对象被调用时候，从方法与方法代理的map中取出代理的方法，然后执行代理的方法
+      //在这个例子中，之前方法绑定使用的是feign.SynchronousMethodHandler这个类，所以在方法处理时候会调用
       return dispatch.get(method).invoke(args);
     }
 
@@ -158,6 +165,7 @@ public class ReflectiveFeign extends Feign {
       this.decoder = checkNotNull(decoder, "decoder");
     }
 
+    //这一步将方法名和对应的方法处理函数绑定在一起，SynchronousMethodHandler实现了MethodHandler接口，相当于为接口方法创建了实现方法
     public Map<String, MethodHandler> apply(Target key) {
       List<MethodMetadata> metadata = contract.parseAndValidatateMetadata(key.type());
       Map<String, MethodHandler> result = new LinkedHashMap<String, MethodHandler>();

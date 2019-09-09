@@ -81,6 +81,8 @@ class FeignClientFactoryBean
 		Assert.hasText(this.name, "Name must be set");
 	}
 
+	//这里调用feign-core里面的代码，进行了Feign.Builder的初始化过程
+	//也是在这一步，feign-core里面将接口转换成了代理对象，
 	protected Feign.Builder feign(FeignContext context) {
 		FeignLoggerFactory loggerFactory = get(context, FeignLoggerFactory.class);
 		Logger logger = loggerFactory.create(this.type);
@@ -220,6 +222,7 @@ class FeignClientFactoryBean
 		}
 	}
 
+	//这个方法是从spring的容器中获取bean
 	protected <T> T get(FeignContext context, Class<T> type) {
 		T instance = context.getInstance(this.contextId, type);
 		if (instance == null) {
@@ -246,6 +249,8 @@ class FeignClientFactoryBean
 				"No Feign Client for loadBalancing defined. Did you forget to include spring-cloud-starter-netflix-ribbon?");
 	}
 
+	//这里是通过factoryBean的方式进行bean调用，
+	//也是feign和spring结合的地方
 	@Override
 	public Object getObject() throws Exception {
 		return getTarget();
@@ -258,6 +263,7 @@ class FeignClientFactoryBean
 	 */
 	<T> T getTarget() {
 		FeignContext context = this.applicationContext.getBean(FeignContext.class);
+		//这里就调用了代理对象的生成过程
 		Feign.Builder builder = feign(context);
 
 		if (!StringUtils.hasText(this.url)) {
@@ -284,6 +290,11 @@ class FeignClientFactoryBean
 			}
 			builder.client(client);
 		}
+
+		//spring在启动过程中，注册了一个org.springframework.cloud.openfeign.FeignAutoConfiguration.DefaultFeignTargeterConfiguration.feignTargeter
+		//默认实现类为DefaultTargeter，所以这里是可以从context中获取这个targeter的，
+		// 调用里面的target方法就是调用生成动态代理的方法，生成一个代理对象
+		//这样在spring每次调用的时候就会调用一个动态代理的对象
 		Targeter targeter = get(context, Targeter.class);
 		return (T) targeter.target(this, builder, context,
 				new HardCodedTarget<>(this.type, this.name, url));

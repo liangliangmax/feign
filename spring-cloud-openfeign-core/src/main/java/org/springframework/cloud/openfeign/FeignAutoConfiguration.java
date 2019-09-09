@@ -87,6 +87,7 @@ public class FeignAutoConfiguration {
 
 	}
 
+	//定义Targeter的默认实现类
 	@Configuration
 	@ConditionalOnMissingClass("feign.hystrix.HystrixFeign")
 	protected static class DefaultFeignTargeterConfiguration {

@@ -222,6 +222,8 @@ GithubTest.main
         --> feign.ReflectiveFeign.FeignInvocationHandler.invoke(Object proxy, Method method, Object[] args)
                 //在此我们可以看出目标函数除了equals，hashCode，toString方法外都会调用this.dispatch.get(method)).invoke(args)
                 //dispatch是目标函数代理类集合，目标接口中每个函数都会对应有一个MethodHandler类，至于怎么得到的有兴趣可以查看源码
+                //动态代理对象被调用时候，从方法与方法代理的map中取出代理的方法，然后执行代理的方法
+                //在这个例子中，之前方法绑定使用的是feign.SynchronousMethodHandler这个类，所以在方法处理时候会调用
             --> return dispatch.get(method).invoke(args); // method = public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String);args=["OpenFeign","feign"]
                 --> feign.SynchronousMethodHandler.invoke(Object[] argv);
                         //1. 接口方法执行都会调用其对应的invoke方法
