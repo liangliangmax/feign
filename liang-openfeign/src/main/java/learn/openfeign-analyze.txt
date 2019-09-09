@@ -2466,7 +2466,85 @@ com.liang.BootstrapApplication.main()
             --> return context; //org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext@5987e932, started on Fri Sep 06 10:23:54 CST 2019, parent: org.springframework.context.annotation.AnnotationConfigApplicationContext@34f6515b
 
 
+        // 一个容器中创建多个feignContext的部分
+    --> org.springframework.cloud.openfeign.FeignClientFactoryBean.getObject
+        --> return getTarget();
+            --> FeignContext context = this.applicationContext.getBean(FeignContext.class);
+            --> Feign.Builder builder = feign(context);
+                --> FeignLoggerFactory loggerFactory = get(context, FeignLoggerFactory.class);
+                    --> T instance = context.getInstance(this.contextId, type); //contextId = github-server; type = interface org.springframework.cloud.openfeign.FeignLoggerFactory
+                        --> AnnotationConfigApplicationContext context = getContext(name); //github-server
+                            --> org.springframework.cloud.context.named.NamedContextFactory.getContext(String name)
 
+                                    //在这个地方，通过名字获取feignContext，如果没有就创建一个feignContext，所以当项目启动时候回出现很多个feignContext
+                                --> if (!this.contexts.containsKey(name))
+                                    --> his.contexts.put(name, createContext(name));
+                                        --> AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+                                        --> context.register(PropertyPlaceholderAutoConfiguration.class,this.defaultConfigType);
+                                        --> context.getEnvironment().getPropertySources().addFirst(new MapPropertySource(
+                                            				this.propertySourceName,
+                                            				Collections.<String, Object>singletonMap(this.propertyName, name)));
+                                        --> if (this.parent != null)
+                                            --> context.setParent(this.parent);
+                                            --> context.setClassLoader(this.parent.getClassLoader());
+                                        --> context.setDisplayName(generateDisplayName(name));
+                                        --> context.refresh();
+                                        --> return context;
+
+                        --> return context.getBean(type);
+
+                    --> return instance;
+                --> Logger logger = loggerFactory.create(this.type);
+                --> // @formatter:off
+                --> Feign.Builder builder = get(context, Feign.Builder.class)
+                        // required values
+                        .logger(logger)
+                        .encoder(get(context, Encoder.class))
+                        .decoder(get(context, Decoder.class))
+                        .contract(get(context, Contract.class));
+                    // @formatter:on
+
+                --> configureFeign(context, builder);
+                    --> FeignClientProperties properties = this.applicationContext.getBean(FeignClientProperties.class);
+                    --> if (properties.isDefaultToProperties())
+                        --> configureUsingConfiguration(context, builder);
+                            --> Logger.Level level = getOptional(context, Logger.Level.class);
+                            --> builder.logLevel(level);
+                            --> Retryer retryer = getOptional(context, Retryer.class);
+                            --> builder.retryer(retryer);
+                            --> ErrorDecoder errorDecoder = getOptional(context, ErrorDecoder.class);
+                            --> builder.errorDecoder(errorDecoder);
+                            --> Request.Options options = getOptional(context, Request.Options.class);
+                            --> builder.options(options);
+                            --> Map<String, RequestInterceptor> requestInterceptors = context.getInstances(this.contextId, RequestInterceptor.class);
+                            --> builder.requestInterceptors(requestInterceptors.values());
+                            --> QueryMapEncoder queryMapEncoder = getOptional(context, QueryMapEncoder.class);
+                            --> builder.queryMapEncoder(queryMapEncoder);
+                            --> builder.decode404();
+
+                        --> configureUsingProperties(properties.getConfig().get(properties.getDefaultConfig()),builder);
+
+                        --> configureUsingProperties(properties.getConfig().get(this.contextId),builder);
+
+                --> return builder;
+
+            --> String url = this.url + cleanPath();
+            --> Client client = getOptional(context, Client.class);
+            --> builder.client(client);
+
+            --> Targeter targeter = get(context, Targeter.class);
+
+                //这里开启了hystrix，所以调用的是org.springframework.cloud.openfeign.HystrixTargeter,不开启的话调用org.springframework.cloud.openfeign.DefaultTargeter
+            --> return (T) targeter.target(this, builder, context,new HardCodedTarget<>(this.type, this.name, url));
+                --> org.springframework.cloud.openfeign.HystrixTargeter.target
+                    --> if (!(feign instanceof feign.hystrix.HystrixFeign.Builder))
+                        --> return feign.target(target);
+                            --> feign.Feign.Builder.target(feign.Target<T>)
+                                --> return build().newInstance(target);
+                                    --> .
+                                        .
+                                        .
+                                        之后就进入到feign-core里面了，生成代理对象的那里
 
 
 
