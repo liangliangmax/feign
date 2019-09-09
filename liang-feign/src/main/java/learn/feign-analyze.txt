@@ -91,6 +91,7 @@ GithubTest.main
                     //这里可以看到是使用了jdk自带的动态代理实现
                     //可以很清楚的看到返回的是目标接口的代理对象
                 --> return feign.newInstance(target);
+                        //这一步将方法名和对应的方法处理函数绑定在一起，SynchronousMethodHandler实现了MethodHandler接口，相当于为接口方法创建了实现方法
                     --> Map<String, MethodHandler> nameToHandler = targetToHandlersByName.apply(target);
                         --> List<MethodMetadata> metadata = contract.parseAndValidatateMetadata(key.type()); //interface com.liang.feign.GitHub
 
@@ -196,11 +197,14 @@ GithubTest.main
 
                         --> return result;
 
+                        //这一步将方法类与方法实现进行了绑定
                     --> Map<Method, MethodHandler> methodToHandler = new LinkedHashMap<Method, MethodHandler>();
 
                     --> for (Method method : target.type().getMethods())
                         --> methodToHandler.put(method, nameToHandler.get(Feign.configKey(target.type(), method))); //key= public abstract java.util.List com.liang.feign.GitHub.contributors(java.lang.String,java.lang.String);value = SynchronousMethodHandler
 
+                        //这一步将HardCodedTarget(type=GitHub, url=https://api.github.com)类与这个接口中所有的方法及其方法时间传入到factory中，生成了个代理类
+                        //每个接口都会生成一个HardCodedTarget的类，里面记录着请求地址等信息，这样就给每个接口生成了一个代理类
                     --> InvocationHandler handler = factory.create(target, methodToHandler); // handler = HardCodedTarget(type=GitHub, url=https://api.github.com)
                         --> return new ReflectiveFeign.FeignInvocationHandler(target, dispatch);
                             --> this.target = checkNotNull(target, "target");
