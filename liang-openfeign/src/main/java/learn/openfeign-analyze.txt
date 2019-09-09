@@ -2466,6 +2466,53 @@ com.liang.BootstrapApplication.main()
             --> return context; //org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext@5987e932, started on Fri Sep 06 10:23:54 CST 2019, parent: org.springframework.context.annotation.AnnotationConfigApplicationContext@34f6515b
 
 
+        //springboot启动过程中会调用factoryBean的方法，这一步就会调用到FeignClientFacotryBean
+    --> org.springframework.context.support.AbstractApplicationContext.refresh()
+        --> finishBeanFactoryInitialization(beanFactory);
+            --> org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization
+                --> beanFactory.preInstantiateSingletons();
+                    --> org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons
+                        --> getBean(beanName);
+                            --> org.springframework.beans.factory.support.AbstractBeanFactory.getBean(java.lang.String)
+                                --> return doGetBean(name, null, null, false);
+                                    --> return createBean(beanName, mbd, args);
+                                        --> org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(java.lang.String, org.springframework.beans.factory.ObjectFactory<?>)
+                                            --> return singletonObject = singletonFactory.getObject();
+                                                --> org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean
+                                                    --> return createBean(beanName, mbd, args);
+                                                        --> org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(java.lang.String, org.springframework.beans.factory.support.RootBeanDefinition, java.lang.Object[])
+                                                            --> Object beanInstance = doCreateBean(beanName, mbdToUse, args);
+                                                                --> populateBean(beanName, mbd, instanceWrapper);
+                                                                    --> InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
+                                                                    --> PropertyValues pvsToUse = ibp.postProcessProperties(pvs, bw.getWrappedInstance(), beanName);
+                                                                        --> org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor#postProcessProperties
+                                                                            --> InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
+                                                                            --> metadata.inject(bean, beanName, pvs);
+                                                                                --> org.springframework.beans.factory.annotation.InjectionMetadata.inject
+                                                                                    --> element.inject(target, beanName, pvs);
+                                                                                        --> org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.AutowiredFieldElement.inject
+                                                                                            --> value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);
+                                                                                                --> org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency
+                                                                                                    --> result = doResolveDependency(descriptor, requestingBeanName, autowiredBeanNames, typeConverter);
+                                                                                                        --> Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
+                                                                                                            --> addCandidateEntry(result, candidate, descriptor, requiredType);
+                                                                                                                --> Object beanInstance = descriptor.resolveCandidate(candidateName, requiredType, this);
+                                                                                                                    --> return beanFactory.getBean(beanName);
+                                                                                                                        --> org.springframework.beans.factory.support.AbstractBeanFactory.getBean(java.lang.String)
+                                                                                                                            --> return doGetBean(name, null, null, false);
+                                                                                                                                --> bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
+                                                                                                                                    --> return super.getObjectForBeanInstance(beanInstance, name, beanName, mbd);
+                                                                                                                                        --> org.springframework.beans.factory.support.AbstractBeanFactory.getObjectForBeanInstance
+                                                                                                                                            --> object = getObjectFromFactoryBean(factory, beanName, !synthetic);
+                                                                                                                                                --> org.springframework.beans.factory.support.FactoryBeanRegistrySupport.getObjectFromFactoryBean
+                                                                                                                                                    --> object = doGetObjectFromFactoryBean(factory, beanName);
+                                                                                                                                                        --> object = factory.getObject();
+                                                                                                                                                            --> org.springframework.cloud.openfeign.FeignClientFactoryBean.getObject()
+                                                                                                                                                                --> return getTarget();
+                                                                                                                                            --> return object;
+                                                            --> return beanInstance;
+
+        // spring会调用FeignClientFactoryBean的getObject方法
         // 一个容器中创建多个feignContext的部分
     --> org.springframework.cloud.openfeign.FeignClientFactoryBean.getObject
         --> return getTarget();
